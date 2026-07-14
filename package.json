@@ -1,0 +1,13 @@
+{
+  "name": "ai-lms",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "AI-Native Course Editor for Canvas — Supabase connection",
+  "scripts": {
+    "check:supabase": "node --env-file=.env scripts/check-supabase.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.58.0"
+  }
+}
