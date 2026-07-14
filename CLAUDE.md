@@ -68,7 +68,24 @@ Phase 0 is a concierge test: hand-produce one real professor's intended next-sem
 
 ## Tech stack
 
-_TBD — fill in once chosen (frontend, backend, agent/LLM layer, Canvas API client, storage). Add run/test/lint commands and repo layout here so future sessions have them._
+_Chosen incrementally — update as decisions land._
+
+- **Database / backend:** **Supabase** (managed Postgres 17). Project `AI LMS` (`mlczrzmwtmmycmurjity`, region `ca-central-1`). Access via `@supabase/supabase-js`; client lives in `lib/supabase/client.ts`. Credentials in `.env` (gitignored; template in `.env.example`), using the **publishable** key. Env vars follow the Next.js convention: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`. **DB is currently empty** — no schema yet; the Data model section above is the design target.
+- **App framework:** **Next.js** with **`@supabase/ssr`** for auth/session. Chosen direction, **not yet scaffolded** — the repo today is credentials-only wiring.
+- **Still TBD:**
+  - Agent / LLM layer — Claude (Anthropic API) is the working default; not formally locked.
+  - Canvas API client — Canvas REST; Classic vs New Quizzes pending the Issue #1 spike.
+  - Hosting / deploy — Vercel is the natural fit with Next.js; undecided.
+
+**Commands**
+- `npm install` — install dependencies
+- `npm run check:supabase` — verify the Supabase connection (URL + key reachable)
+
+**Repo layout (so far)**
+- `lib/supabase/client.ts` — configured Supabase client
+- `scripts/check-supabase.mjs` — connection verification
+- `.env` / `.env.example` — Supabase credentials + template
+- `MVP-Spec.md`, `Phase1-Issues.md` — PRD + Phase 1 build breakdown
 
 ## Conventions
 
