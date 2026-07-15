@@ -83,15 +83,7 @@ _Chosen incrementally — update as decisions land._
 - `npm install` — install dependencies
 - `npm run check:supabase` — verify the Supabase connection (URL + key reachable)
 - `npm test` — run validator tests (Canvas payload validation)
-
-## Authoring skills
-
-Two Claude skills generate new course artifacts as Canvas-API-ready JSON, built around learning objectives (every artifact must trace to one):
-
-- `.claude/skills/write-assessments/` — quizzes/tests (New Quizzes items) and assignments, from objectives + topics/terms
-- `.claude/skills/write-content/` — article-style content pages (textbook replacement), from objectives
-
-Both emit a JSON envelope (`artifact_type`, `objectives`, `canvas` payloads, `alignment` map) and must pass `node scripts/validate-canvas-payload.mjs <file>` before anything is shown as final. The validator enforces upload-shape correctness plus the alignment rules (no orphan objectives/items, `published` never true). Worked examples live in each skill's `references/` and double as test fixtures for `npm test`.
+- `npm run check:tests` — audit that each validator rule has a test that fails without it
 - `pip install -r requirements-dev.txt` — install the Canvas core and test dependencies
 - `python -m pytest -q` — run the offline lossless round-trip suite
 
@@ -100,12 +92,28 @@ Both emit a JSON envelope (`artifact_type`, `objectives`, `canvas` payloads, `al
 - `lib/supabase/types.ts` — generated DB types (regenerate after migrations)
 - `supabase/migrations/` — SQL schema migrations (source of truth for the DB)
 - `scripts/check-supabase.mjs` — connection verification
-- `canvas_import/model/` — LMS-agnostic course working-copy model
-- `canvas_import/canvas/` — Canvas OAuth/import/New Quiz adapter boundary
-- `spikes/quiz_writeback/` — explicit live fidelity probes
-- `tests/roundtrip/` — offline and opt-in live round-trip gates
+- `scripts/validate-canvas-payload.mjs` — validates authoring-skill output before it reaches a professor
+- `backend/canvas_import/model/` — LMS-agnostic course working-copy model
+- `backend/canvas_import/canvas/` — Canvas OAuth/import/New Quiz adapter boundary
+- `backend/spikes/quiz_writeback/` — explicit live fidelity probes
+- `backend/tests/roundtrip/` — offline and opt-in live round-trip gates
+- `tests/` — validator tests (Node)
+- `.claude/skills/` — authoring skills (see below)
 - `.env` / `.env.example` — Supabase credentials + template
 - `MVP-Spec.md`, `Phase1-Issues.md` — PRD + Phase 1 build breakdown
+
+## Authoring skills
+
+Two Claude skills generate new course artifacts as Canvas-API-ready JSON, built around learning objectives (every artifact must trace to one):
+
+- `.claude/skills/write-assessments/` — quizzes/tests (New Quizzes items) and assignments, from objectives + topics/terms
+- `.claude/skills/write-content/` — article-style content pages (textbook replacement), from objectives
+
+Both skills start by settling the artifact's shape with the professor (question count/types/points/time limit; reading length, terms, misconceptions) rather than guessing — a wrong guess means they rewrite by hand, which is the outcome this product exists to prevent. Both read the imported course for terms rather than asking the professor to retype them.
+
+Both emit a JSON envelope (`artifact_type`, `objectives`, `canvas` payloads, `alignment` map) and must pass `node scripts/validate-canvas-payload.mjs <file>` before anything is shown as final. The validator enforces upload-shape correctness plus the alignment rules (no orphan objectives/items, `published` never true). Worked examples live in each skill's `references/` and double as test fixtures for `npm test`.
+
+**These skills generate proposals only.** They emit JSON for a professor to review; they do not write to Canvas. New Quiz write-back stays disabled until the live fidelity spike passes (`backend/spikes/quiz_writeback/`) — so nothing these skills produce has been round-tripped against a real Canvas instance yet. Treat their output as validated-against-the-documented-shape, not proven-to-upload.
 
 ## Conventions
 
