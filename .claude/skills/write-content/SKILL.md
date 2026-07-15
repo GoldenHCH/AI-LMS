@@ -1,6 +1,6 @@
 ---
 name: write-content
-description: Write article-style course content pages (textbook-replacement readings) for a Canvas course from learning objectives. Produces Canvas-API-ready Page JSON that validates before upload. Use when the professor asks to "write an article", "create a reading", "add a content page", "write the material for module N", "replace the textbook chapter on X", or any request to generate new instructional content — even if they don't say "page".
+description: Write article-style course content pages - textbook-replacement readings - for a Canvas course, built from learning objectives. Settles the shape first (purpose, length in reading minutes, terms, misconceptions to kill), then emits Canvas-API-ready Page JSON that validates before upload. Use when a professor wants new instructional reading material - "write the reading", "create a content page", "write the material for module N", "replace the textbook chapter on X", "write an article on Y", "my students can't afford the textbook", "something they read before lecture", "add a page explaining Z", "write remediation material for students who struggled", "give me a version they'll actually finish" - including when they describe a misconception to fix or a topic students trip on rather than saying "page" or "article". Not for copy-editing existing pages, not for writing quizzes or assignments (that is write-assessments), and not for importing/exporting courses.
 ---
 
 # Write Course Content
@@ -16,14 +16,43 @@ Content exists to get a student from "hasn't met the objective" to "can demonstr
 - **If you can't ask** (batch run, no reply coming), don't stall: draft them, write the page, and open your summary with the drafted objectives flagged as *unconfirmed — please check these first*, above the article. Surfacing beats stalling; what's forbidden is letting invented objectives pass as the professor's own.
 - Every major section of the article maps to an objective; every objective is taught somewhere. The validator enforces this.
 
-## Inputs
+## Intake: get the shape before you write
 
-| Input | Required | Notes |
+Writing 2,000 words when they wanted a 5-minute primer wastes their review time and yours. Settle the shape first.
+
+**Open with the goal, not a form.** Ask what they want the reading to *do* — replace a textbook chapter, pre-read before a lecture, remediation for students who struggled, a primer before a lab? That one answer implies depth, length, and tone, and it's a question they enjoy answering. Then fill remaining gaps in **one** round, not serially.
+
+**Read before you ask.** The course is already imported. Pull the module's existing pages, terms, and prior readings and ask them to confirm — "your Module 4 page uses 'allosteric' and 'competitive inhibition'; should this build on those?" beats asking them to list vocabulary they already wrote down.
+
+**What to settle, and what to do if they don't say:**
+
+| Ask | Why it changes the artifact | Default if unanswered |
 |---|---|---|
-| Learning objectives | yes (or derivable from a topic) | one observable verb each |
-| Module / course context | no | imported pages, terms, prerequisite pages to link |
-| Length / depth guidance | no | default: one page per coherent objective cluster, 800–1500 words |
-| Source material | no | professor-supplied text to transform — prefer it over general knowledge, and cite it |
+| **What it's for** | sets depth and tone | textbook-chapter replacement |
+| **Objectives** | everything traces to them | draft from the topic, flag unconfirmed |
+| **Length** | in reading minutes or pages — convert with the table below | 10 minutes (≈1,800 words) |
+| **Topics and their terms** | the vocabulary the page teaches in | read from the module; confirm |
+| **Preferred examples** | professors reuse examples students already know | propose your own; see below |
+| **Misconceptions to kill** | the highest-value thing they know and you don't | ask — this one is worth asking even if nothing else is |
+| **Source material** | transform and cite theirs over general knowledge | ask if a chapter/slides exist |
+
+**Sizing: minutes, not word counts.** Professors budget class time, so talk in minutes and convert yourself. Students read *new academic material they're trying to learn* at roughly **180 words per minute** — not the 250–300 wpm figure people quote, which measures casual reading and doesn't apply to studying (see `references/content-design.md` for the evidence). Pick the tier by how much of the page is new to the student:
+
+| Material | wpm | 5 min | 10 min | 20 min |
+|---|---|---|---|---|
+| Review / familiar, narrative | 230 | 1,150 words | 2,300 | 4,600 |
+| **New material (default)** | **180** | **900 words** | **1,800** | **3,600** |
+| Dense — formulas, heavy jargon, quantitative | 130 | 650 words | 1,300 | 2,600 |
+
+If they ask in pages, a page of course prose is **≈500 words ≈ 3 minutes** at learning speed — use it to translate, then work in minutes.
+
+Tell them the estimate in your summary ("~1,800 words, about 10 minutes"), and count the words you actually wrote rather than guessing. Overshooting the ask by 50% is a real failure: it silently blows the reading budget they planned around, and they find out from students, not from you.
+
+**Ask what they'd correct, not what they'd write.** "What do students always get wrong here?" gets a better page than "what should I cover?" — they have years of watching people trip on the same step, and that's exactly what the Rethink and Tailor sections are for. It's also the one question they can answer instantly.
+
+**Propose; don't just collect.** Draft two or three candidate examples or scenarios from their course material and ask which lands, rather than asking them to supply one. If the topic has an obvious sequencing dependency they didn't mention, name it. Suggesting is the job.
+
+If no answer is coming (batch run), take the defaults, write the page, and list the assumptions at the top of your summary.
 
 ## Workflow
 

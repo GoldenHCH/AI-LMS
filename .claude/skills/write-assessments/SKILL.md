@@ -1,6 +1,6 @@
 ---
 name: write-assessments
-description: Write quizzes, tests, and assignments for a Canvas course from learning objectives and their topics/terms. Produces Canvas-API-ready JSON (New Quizzes items or Assignments) that validates before upload. Use when the professor asks to "write a quiz", "create a test", "add questions on X", "make an assignment", "build an exam for module N", or any request to generate new assessment material — even if they don't name a format.
+description: Write quizzes, tests, exams, assignments, and rubrics for a Canvas course, built from learning objectives. Settles the shape first (how many questions, which types, points, time limit), then emits Canvas-API-ready JSON that validates before upload. Use when a professor wants new, extended, or corrected assessment material - "write a quiz", "create a test", "build the unit exam", "make an assignment", "add questions on X", "write practice problems", "I need a rubric", "make a make-up test", "fix question 4", "bump that question to 3 points", "something to check they understood the reading" - including when they describe what students should be able to DO rather than naming a format, and including edits to existing quizzes (answer keys, point values, question counts). Not for analyzing quiz results or regrading submissions, not for importing/exporting courses, and not for writing reading material (that is write-content).
 ---
 
 # Write Assessments
@@ -16,21 +16,40 @@ Every question and every assignment must serve a specific learning objective. Th
 - **If you can't ask** (batch run, no reply coming), don't stall: draft the objectives, write the assessment, and open your summary with the drafted objectives flagged as *unconfirmed — please check these first*, above the artifact. The failure mode to avoid isn't proceeding without confirmation; it's letting invented objectives look like the professor's own. Surfacing beats stalling; burying is what's forbidden.
 - No objective may go untested (no orphan objectives), and no item may exist without an objective (no orphan items). The validator enforces this.
 
-## Inputs
+## Intake: get the shape before you write
 
-| Input | Required | Notes |
+A professor asking for "a quiz" has a specific quiz in their head — 10 questions, all multiple choice, 20 minutes, worth 5% of the grade. Guess wrong on any of that and they rewrite it by hand, which is the one outcome this product exists to prevent. So settle the shape first.
+
+**Open with the goal, not a form.** If they haven't said, ask what the assessment is *for* — a low-stakes weekly check, a unit test, a make-up exam? That single answer implies most of the rest (a weekly check is short, auto-graded, retakeable; a unit test isn't), and it's a question professors enjoy answering. Then fill the remaining gaps in **one** round of questions, not a serial interrogation.
+
+**Read before you ask.** The course is already imported. Pull the module's existing pages, terms, and prior quizzes yourself and ask them to *confirm* — "I pulled these terms from your Module 4 page: …, ok?" beats "what terms should I use?". Only ask for what isn't in the course.
+
+**What to settle, and what to do if they don't say:**
+
+| Ask | Why it changes the artifact | Default if unanswered |
 |---|---|---|
-| Learning objectives | yes (or derivable from topics) | one observable behavior each |
-| Topics / terms | no | vocabulary the items should use |
-| Assessment type | no | quiz, test/exam, or assignment; infer from the request |
-| Item count / total points | no | default: 2 items per objective, 1 point per item |
-| Module / course context | no | imported course content to ground items in |
+| **Objectives** | everything traces to them | draft from topics, flag unconfirmed |
+| **How many questions** | drives coverage per objective | 2 per objective |
+| **Which question types** | MC, true/false, matching, multi-select, essay, numeric | auto-gradable mix; no essay unless they ask |
+| **Points** | equal, or some worth more? | 1 point each, equal |
+| **Time limit** | unlimited, or how many minutes? | unlimited (`has_time_limit: false`) |
+| **Retakes** | one attempt or several? | one attempt |
+| **Topics / terms** | the vocabulary items and distractors draw on | read from the module; confirm |
+| **Preferred examples or scenarios** | professors often have a case they always use | propose your own; see below |
+
+**Propose; don't just collect.** Where an objective needs an application item, don't ask "what scenario would you like?" — that hands them the work. Draft two or three scenarios grounded in their course material and ask which fits. Same for topic coverage: if their objectives leave an obvious gap, name it rather than quietly filling it. Suggesting is the job; interrogating is not.
+
+If no answer is coming (batch run), take every default above, write the assessment, and list the assumptions at the top of your summary so they can correct in one pass instead of discovering them item by item.
 
 ## Workflow
 
-1. **Blueprint first.** Before writing any question, build a coverage plan: for each objective, decide how many items and which question types.
+1. **Blueprint first.** Before writing any question, build a coverage plan from the intake: how many items per objective, which type each is, what it's worth. Show it to the professor when it diverges from what they asked for — "you wanted 6 questions across 3 objectives, so LO2 gets one item; it's the 'analyze' objective, so I'd rather give it two and trim LO1" is a 10-second decision for them and a rewrite avoided.
 
-   **For quizzes and tests:** default 2+ items per objective, 1 point each. Match item type to the objective's verb — recall verbs (define, identify, list) suit choice/true-false/matching; application and analysis verbs (apply, compare, calculate, evaluate) need scenario-based choice items, numeric items, or essay prompts. A mismatch (an "analyze" objective tested by a definition-recall item) is the most common alignment failure.
+   **Honor the count they gave.** If they said 10 questions, write 10. Distribute across objectives by weight, not evenly — the objective their exam cares about most gets more items. If their count can't cover every objective (5 questions, 7 objectives), say so and ask what to cut rather than silently under-testing something.
+
+   **Match item type to the objective's verb** within the types they allowed: recall verbs (define, identify, list) suit choice/true-false/matching; application and analysis verbs (apply, compare, calculate, evaluate) need scenario-based choice items, numeric items, or essay prompts. A mismatch (an "analyze" objective tested by a definition-recall item) is the most common alignment failure. If they ruled out the type an objective needs — "no essays" on an "evaluate" objective — build the scenario MC instead and say what it costs.
+
+   **Points follow their scheme.** Equal by default. If they said some questions are worth more, weight by cognitive demand (the application item, not the recall one) and make `quiz.points_possible` match the sum — the validator enforces that, because a mismatch grades against the wrong denominator silently.
 
    **For assignments:** the unit is the rubric criterion, not the item — one criterion per objective. Item counts don't apply. One rich task that exercises every objective usually beats several thin ones; the rubric is what carries the coverage.
 

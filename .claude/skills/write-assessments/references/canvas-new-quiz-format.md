@@ -34,6 +34,24 @@ Verified against Instructure docs (full reference with sources: `~/Research/canv
 
 The three date fields are optional; include them only when the professor gives dates. They're ISO 8601, and must run `unlock_at` ≤ `due_at` ≤ `lock_at` — Canvas rejects any other order, and a window that closes before the due date locks students out of their own quiz.
 
+## quiz_settings — where the intake answers land
+
+The intake asks about time limits and retakes. This is where those answers go:
+
+| Professor said | Set |
+|---|---|
+| "20 minutes" | `"has_time_limit": true, "session_time_limit_in_seconds": 1200` |
+| "no time limit" / didn't say | `"has_time_limit": false` (omit the seconds field) |
+| "they can retake it twice" | `"multiple_attempts": { "multiple_attempts_enabled": true, "attempt_limit": true, "max_attempts": 2, "score_to_keep": "highest" }` |
+| "one shot" / didn't say | `"multiple_attempts": { "multiple_attempts_enabled": false }` |
+| "shuffle the answers" | `"shuffle_answers": true` |
+| "one question at a time, no going back" | `"one_at_a_time_type": "question", "allow_backtracking": false` |
+
+`session_time_limit_in_seconds` is **seconds** — a professor saying "20 minutes" means 1200, and writing 20 there gives their students twenty seconds. Convert deliberately.
+
+`score_to_keep` accepts `highest`, `latest`, or `average`. Ask which if they enable retakes and don't say; "highest" is the common default but it's their grading policy, not ours.
+
+
 ## Item envelope (every question type)
 
 ```json

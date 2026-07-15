@@ -27,6 +27,24 @@ Research-backed rules for generating article-style course pages. Distilled from 
 - **Close Merrill-style: Application → Integration.** Application: practice whose scaffolding fades across examples (fully worked → partially worked → learner-solved). Integration: a transfer prompt in a new context, linking outward (F6 rule 10, moderate evidence).
 - **Prefer interactive map-completion over a displayed map when the medium allows** (constructing beats studying, g=0.72 vs 0.43). Canvas Pages are mostly static — render the static organizer, and note the interactive version as the stronger design when the platform supports it (F6 rule 9).
 
+## Sizing a page (reading time)
+
+Professors budget in minutes, so convert word counts to minutes for them. The rate depends on what the reader is doing:
+
+| Material | wpm | Basis |
+|---|---|---|
+| Review / familiar, narrative | 230 | Brysbaert 2019 meta-analysis (190 studies, 18,573 participants): silent non-fiction reading averages 238 wpm; 248 for university students. Rounded down for margin. |
+| **New material — the default** | **180** | Carver's "reading to pass a test" gear (200 wpm) and Rice University's Course Workload Estimator "some new concepts" tier (180 wpm) converge here from independent directions. |
+| Dense — formulas, jargon, quantitative | 130 | Rice's "many new concepts" tier; matches the Minnesota Speed of Reading Test on hard college text (130–154 wpm). |
+
+**The catch that matters:** the widely-quoted 238–300 wpm figures measure *casual comprehension* reading. Brysbaert's meta-analysis explicitly **excludes** study-for-retrieval tasks from its scope, so it is the wrong number for coursework — using it would under-budget every page by a third. Brysbaert also traces the popular "300 wpm" claim to small unrepresentative samples (including one study of ten MIT undergraduates) and argues it's inflated.
+
+Page convention when a professor asks in pages: **≈500 words ≈ 3 minutes** at learning speed. Rice samples real texts at 450 words/page (plain prose), 600 (academic monograph), 750 (textbook with images or two columns) — but Rice calls these an informal convention from their own collection, not a validated standard. Don't cite them as research; use them to translate and move on.
+
+**Screen vs paper:** Delgado et al. 2018 (54 studies, >170,000 participants) found reading *speed* is essentially the same on screen and paper — so no adjustment for the LMS being digital. What differs is comprehension: a screen-inferiority effect concentrated in expository text (g = −0.27) and under time pressure (g = −0.26 timed vs ~0 untimed). The design implication isn't a slower wpm; it's that timed, dense, on-screen reading is where comprehension quietly degrades — another reason inline retrieval prompts (the Rethink step) earn their place.
+
+Honest limits: no large modern peer-reviewed study measures reading-to-learn rate specifically, or on-screen academic reading rate. Carver's gear figures are from the 1970s–90s and widely cited but not themselves a modern meta-analysis. Treat 180 as a well-grounded working default, not a precise constant.
+
 ## Grounding and honesty
 
 - **Expert-grounded content is load-bearing, not cosmetic.** The strongest AI-tutoring RCT results (0.63–1.3 SD, Kestin/Harvard) rode on pre-written, expert-vetted content — "design is the treatment" (F15). When the professor supplies material, transform and cite it; don't free-generate over it.
