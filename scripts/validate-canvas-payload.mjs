@@ -103,6 +103,13 @@ function validateNewQuiz(envelope, err) {
     return;
   }
 
+  // A quiz whose declared total disagrees with its items grades wrong in Canvas
+  // and the professor has no way to see it in a diff — catch it here instead.
+  const itemPoints = items.reduce((sum, wrapper) => sum + (Number(wrapper?.item?.points_possible) || 0), 0);
+  if (typeof quiz?.points_possible === "number" && !approxEqual(quiz.points_possible, itemPoints)) {
+    err("canvas.quiz.points_possible", `is ${quiz.points_possible} but the items sum to ${itemPoints}`);
+  }
+
   items.forEach((wrapper, index) => {
     const path = `canvas.items[${index}]`;
     const item = wrapper?.item;
@@ -243,6 +250,15 @@ function validateAssignment(envelope, err) {
   if (!(typeof assignment.points_possible === "number" && assignment.points_possible >= 0)) {
     err("canvas.assignment.points_possible", "must be a number >= 0");
   }
+  // Same trap as quizzes: a rubric that can't add up to the assignment's total
+  // means students literally cannot earn full marks.
+  const scored = envelope.canvas.rubric?.criteria;
+  if (scored && !Array.isArray(scored) && typeof assignment.points_possible === "number") {
+    const rubricPoints = Object.values(scored).reduce((sum, criterion) => sum + (Number(criterion?.points) || 0), 0);
+    if (!approxEqual(rubricPoints, assignment.points_possible)) {
+      err("canvas.rubric", `criteria sum to ${rubricPoints} but the assignment is worth ${assignment.points_possible}`);
+    }
+  }
   if (!Array.isArray(assignment.submission_types) || assignment.submission_types.length === 0) {
     err("canvas.assignment.submission_types", "must be a non-empty array");
   } else {
@@ -352,6 +368,11 @@ function checkHtml(html, path, err) {
 
 function isNonEmptyString(value) {
   return typeof value === "string" && value.trim().length > 0;
+}
+
+// Points are often fractional (0.5 per item); exact === would false-alarm on float drift.
+function approxEqual(a, b) {
+  return Math.abs(a - b) < 0.001;
 }
 
 // CLI

@@ -295,6 +295,29 @@ test("accepts an essay item carrying only neutral feedback", () => {
   assert.ok(QUIZ.canvas.items[3].item.entry.feedback.neutral);
 });
 
+// --- Points consistency. Canvas will happily accept a quiz whose declared total
+// --- disagrees with its items and then grade against the wrong denominator, and
+// --- the professor cannot see that in a diff. So it fails here instead.
+
+test("rejects a quiz whose points_possible disagrees with its items", () => {
+  const bad = clone(QUIZ);
+  bad.canvas.quiz.points_possible = 99;
+  rejects(bad, "items sum to");
+});
+
+test("accepts fractional points that sum correctly", () => {
+  const good = clone(QUIZ);
+  good.canvas.items.forEach((wrapper) => { wrapper.item.points_possible = 0.5; });
+  good.canvas.quiz.points_possible = 2;
+  assert.deepEqual(validate(good), [], "0.5 x 4 = 2 must not trip float comparison");
+});
+
+test("rejects a rubric that cannot add up to the assignment total", () => {
+  const bad = clone(ASSIGNMENT);
+  bad.canvas.assignment.points_possible = 25; // rubric criteria sum to 20
+  rejects(bad, "criteria sum to");
+});
+
 // --- Assignments + rubrics
 
 test("rejects an unknown submission_type", () => {
