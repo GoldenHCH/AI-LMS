@@ -2,6 +2,45 @@
 
 AI-Native Course Editor for Canvas. See [MVP-Spec.md](MVP-Spec.md) and [Phase1-Issues.md](Phase1-Issues.md) for product scope.
 
+## Canvas course import core
+
+This repository contains the lossless import foundation for the Canvas course editor:
+
+- LMS-agnostic `Course → Module → Item` model with pages, Classic/New quizzes, questions,
+  answers, read-only files, and opaque unsupported items.
+- Raw HTML and all Canvas IDs/positions preserved through a versioned JSON working copy.
+- Read-only `canvasapi` import adapter plus raw New Quiz REST client.
+- OAuth2 URL/token primitives with state validation and no token persistence in course files.
+- Canvas-facing dry-run export snapshots and two independent round-trip fixtures.
+- Live Classic/New Quiz write-back probes with safe restore behavior.
+
+### Python setup
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements-dev.txt
+python -m pytest -q
+```
+
+The normal test suite is completely offline. See
+[`backend/spikes/quiz_writeback/README.md`](backend/spikes/quiz_writeback/README.md) for the credentialed live
+spike and [`docs/COURSE_MODEL.md`](docs/COURSE_MODEL.md) for the model contract.
+
+### Live round-trip gate
+
+To exercise two real, isolated test courses without writing to them:
+
+```bash
+export CANVAS_BASE_URL=https://your-school.test.instructure.com
+export CANVAS_ACCESS_TOKEN=your-test-token
+export CANVAS_ROUNDTRIP_COURSE_IDS=123,456
+python -m pytest -q -m live
+```
+
+The live import path issues reads only. New Quiz editing remains disabled unless the separate
+write-back spike is deliberately run and accepted.
+
 ## Supabase connection
 
 This repo is wired to the Supabase project **AI LMS** (`mlczrzmwtmmycmurjity`, region `ca-central-1`).
