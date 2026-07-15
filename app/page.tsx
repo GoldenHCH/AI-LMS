@@ -20,8 +20,13 @@ export default async function HomePage() {
               Inspect every module, page, quiz, file, and unsupported item before making a change.
             </p>
           </div>
-          <div className="w-fit rounded-full border border-ocean/20 bg-ocean/5 px-4 py-2 text-sm font-medium text-ocean">
-            {courses.length} {pluralize('course', courses.length)} imported
+          <div className="flex flex-wrap items-center gap-3">
+            <Link
+              href="/connect"
+              className="inline-flex min-h-11 items-center justify-center rounded-xl bg-ocean px-4 py-2 text-sm font-semibold text-white hover:bg-teal-800 focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-ocean"
+            >
+              Import another course
+            </Link>
           </div>
         </header>
 
@@ -76,11 +81,14 @@ export default async function HomePage() {
           <section className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center shadow-panel">
             <p className="text-lg font-semibold text-ink">No imported courses yet</p>
             <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-600">
-              Run the fixture seed script to populate this development workspace with the two sample Canvas courses.
+              Connect Canvas with a temporary personal access token and choose an instructor-manageable course.
             </p>
-            <code className="mt-5 inline-block rounded-lg bg-slate-900 px-4 py-2 text-sm text-slate-100">
-              python backend/scripts/seed_supabase.py
-            </code>
+            <Link
+              href="/connect"
+              className="mt-6 inline-flex min-h-11 items-center justify-center rounded-xl bg-ocean px-5 py-3 text-sm font-semibold text-white hover:bg-teal-800 focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-ocean"
+            >
+              Connect Canvas
+            </Link>
           </section>
         )}
       </div>

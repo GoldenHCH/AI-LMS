@@ -72,10 +72,18 @@ export type CourseModule = {
   items: CourseItem[]
 }
 
+export type CourseImportIssue = {
+  phase: string
+  canvasId: string | null
+  message: string
+}
+
 export type CourseTree = {
   id: string
   canvasCourseId: string
   name: string
+  importStatus: 'complete' | 'partial'
+  importIssues: CourseImportIssue[]
   modules: CourseModule[]
   files: CourseFile[]
   moduleCount: number
@@ -154,6 +162,8 @@ type RawCourse = {
   id: string
   canvas_course_id: string
   name: string
+  import_status: string
+  import_issues: Json
   modules: RawModule[] | null
   files: RawFile[] | null
 }
@@ -162,6 +172,8 @@ const COURSE_TREE_SELECT = `
   id,
   canvas_course_id,
   name,
+  import_status,
+  import_issues,
   modules!modules_course_id_fkey (
     id,
     name,
@@ -289,6 +301,8 @@ function mapCourse(raw: RawCourse): CourseTree {
     id: raw.id,
     canvasCourseId: raw.canvas_course_id,
     name: raw.name,
+    importStatus: raw.import_status === 'partial' ? 'partial' : 'complete',
+    importIssues: mapImportIssues(raw.import_issues),
     modules,
     files: (raw.files ?? [])
       .filter((file) => file.module_item_id === null)
@@ -296,6 +310,22 @@ function mapCourse(raw: RawCourse): CourseTree {
     moduleCount: modules.length,
     itemCount: modules.reduce((count, module) => count + module.items.length, 0),
   }
+}
+
+function mapImportIssues(value: Json): CourseImportIssue[] {
+  if (!Array.isArray(value)) return []
+  return value.slice(0, 100).flatMap((entry) => {
+    const record = asObject(entry)
+    if (!record) return []
+    const phase = typeof record.phase === 'string' ? record.phase.slice(0, 64) : 'resource'
+    const canvasId =
+      typeof record.canvasId === 'string' ? record.canvasId.slice(0, 128) : null
+    const message =
+      typeof record.message === 'string'
+        ? record.message.slice(0, 160)
+        : 'Canvas resource could not be imported'
+    return [{ phase, canvasId, message }]
+  })
 }
 
 function mapItem(raw: RawItem): CourseItem {

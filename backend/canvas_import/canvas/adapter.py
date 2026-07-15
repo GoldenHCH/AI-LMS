@@ -6,9 +6,15 @@ an in-memory dry-run snapshot; writing to Canvas remains a separately confirmed 
 
 from __future__ import annotations
 
+import logging
+import time
 from copy import deepcopy
 from dataclasses import dataclass
+from datetime import date, datetime
+from decimal import Decimal
 from typing import Any, Iterable
+
+import requests
 
 from canvas_import.model import (
     Answer,
@@ -22,6 +28,8 @@ from canvas_import.model import (
 )
 
 from .new_quizzes import NewQuizClient
+from .origin import validate_canvas_origin
+from .session import CanvasOverallTimeout, HardenedCanvasSession
 
 
 class CanvasImportError(RuntimeError):
@@ -30,6 +38,18 @@ class CanvasImportError(RuntimeError):
 
 class CanvasAuthenticationError(CanvasImportError):
     """Canvas rejected or could not authorize the import."""
+
+
+class CanvasRateLimitError(CanvasImportError):
+    """Canvas asked the caller to retry later."""
+
+
+class CanvasTimeoutError(CanvasImportError):
+    """A Canvas request or the overall import exceeded its time budget."""
+
+
+class CanvasUnreachableError(CanvasImportError):
+    """Canvas could not be reached without exposing network details."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,6 +74,12 @@ class CanvasCourseSummary:
     name: str
 
 
+@dataclass(frozen=True, slots=True)
+class CanvasUserSummary:
+    canvas_user_id: str
+    name: str
+
+
 class CanvasAdapter:
     """Map Canvas resources to/from a faithful LMS-agnostic course document."""
 
@@ -75,35 +101,93 @@ class CanvasAdapter:
         access_token: str,
         *,
         new_quizzes_editable: bool = False,
+        overall_timeout_seconds: float = 300,
     ) -> CanvasAdapter:
-        """Construct both Canvas clients from a short-lived OAuth access token."""
+        """Construct request-local, read-only clients from a transient Canvas PAT."""
 
         from canvasapi import Canvas
 
+        normalized_origin = validate_canvas_origin(base_url)
+        deadline_at = time.monotonic() + overall_timeout_seconds
+        canvas = Canvas(normalized_origin, access_token)
+        requester = canvas._Canvas__requester  # noqa: SLF001 - canvasapi has no hook
+        requester._session = HardenedCanvasSession(  # noqa: SLF001
+            timeout_seconds=30,
+            deadline_at=deadline_at,
+            allowed_origin=normalized_origin,
+        )
+
+        # canvasapi logs response bodies at DEBUG. Imports never permit that
+        # verbosity, even if the host process enables debug logging globally.
+        logging.getLogger("canvasapi").setLevel(logging.INFO)
+
         return cls(
-            Canvas(base_url, access_token),
-            new_quiz_client=NewQuizClient(base_url, access_token),
+            canvas,
+            new_quiz_client=NewQuizClient(
+                normalized_origin,
+                access_token,
+                session=HardenedCanvasSession(
+                    timeout_seconds=30,
+                    deadline_at=deadline_at,
+                    allowed_origin=normalized_origin,
+                ),
+                read_only=True,
+            ),
             new_quizzes_editable=new_quizzes_editable,
         )
 
-    def list_courses(self) -> list[CanvasCourseSummary]:
-        """List visible courses without hiding authorization or API failures."""
+    def validate_credentials(self) -> CanvasUserSummary:
+        """Validate the PAT through GET /api/v1/users/self only."""
 
         try:
-            courses = list(self.canvas.get_courses())
+            user = self.canvas.get_current_user()
+            raw = _snapshot(user)
+            canvas_user_id = _required(raw, "id")
         except Exception as exc:
             raise _classified_import_error(
-                exc, "Could not list Canvas courses"
+                exc, "Could not validate Canvas credentials"
             ) from exc
-        return [
-            CanvasCourseSummary(
-                canvas_course_id=_required(raw := _snapshot(course), "id"),
-                name=str(
-                    raw.get("name") or raw.get("course_code") or "Untitled course"
-                ),
-            )
-            for course in courses
-        ]
+        return CanvasUserSummary(
+            canvas_user_id=str(canvas_user_id),
+            name=str(raw.get("name") or raw.get("short_name") or "Canvas user"),
+        )
+
+    def list_courses(self) -> list[CanvasCourseSummary]:
+        """List the instructor's manageable courses without hiding auth or API failures.
+
+        Canvas ``GET /courses`` accepts ``enrollment_type`` as a single value, so each
+        teaching role is queried separately and the results merged (deduplicated by
+        course id). Passing a list serializes to ``enrollment_type[]`` which Canvas
+        rejects with a 500.
+        """
+
+        deduplicated: dict[str, CanvasCourseSummary] = {}
+        for role in ("teacher", "ta", "designer"):
+            try:
+                courses = list(
+                    self.canvas.get_courses(
+                        enrollment_type=role,
+                        enrollment_state="active",
+                    )
+                )
+            except Exception as exc:
+                raise _classified_import_error(
+                    exc, "Could not list Canvas courses"
+                ) from exc
+            for course in courses:
+                raw = _snapshot(course)
+                canvas_course_id = _required(raw, "id")
+                key = str(canvas_course_id)
+                if key not in deduplicated:
+                    deduplicated[key] = CanvasCourseSummary(
+                        canvas_course_id=canvas_course_id,
+                        name=str(
+                            raw.get("name")
+                            or raw.get("course_code")
+                            or "Untitled course"
+                        ),
+                    )
+        return list(deduplicated.values())
 
     def import_course(self, course_id: int | str) -> Course:
         """Import one course with no Canvas writes and no silently swallowed failures."""
@@ -685,7 +769,7 @@ def _export_file(file: FileRef) -> dict[str, Any]:
 
 def _snapshot(value: Any) -> dict[str, Any]:
     if isinstance(value, dict):
-        return deepcopy(value)
+        return _json_safe(value)
     try:
         attributes = vars(value)
     except TypeError as exc:
@@ -693,10 +777,33 @@ def _snapshot(value: Any) -> dict[str, Any]:
             f"Canvas returned an unsupported {type(value).__name__} object"
         ) from exc
     return {
-        key: deepcopy(item)
+        key: _json_safe(item)
         for key, item in attributes.items()
         if not key.startswith("_") and not callable(item)
     }
+
+
+def _json_safe(value: Any) -> Any:
+    """Return a JSON-serializable deep copy.
+
+    ``canvasapi`` decorates its objects with ``datetime`` values (e.g. the
+    ``*_date`` fields it derives from Canvas' ISO strings). Those cannot be
+    persisted to the ``jsonb`` scratchpad columns as-is, so every snapshot is
+    normalized to JSON-native types before it becomes a ``raw_payload``.
+    """
+
+    if isinstance(value, dict):
+        return {str(key): _json_safe(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(item) for item in value]
+    if isinstance(value, bool) or value is None or isinstance(value, (str, int, float)):
+        return value
+    if isinstance(value, (datetime, date)):
+        return value.isoformat()
+    if isinstance(value, Decimal):
+        return float(value)
+    # Last resort: never let an unexpected type break persistence.
+    return str(value)
 
 
 def _classified_import_error(exc: Exception, fallback: str) -> CanvasImportError:
@@ -707,9 +814,13 @@ def _classified_import_error(exc: Exception, fallback: str) -> CanvasImportError
             "Canvas authorization failed; reconnect and verify API scopes"
         )
     if status == 429:
-        return CanvasImportError(
+        return CanvasRateLimitError(
             "Canvas rate-limited the import; retry after the server delay"
         )
+    if isinstance(exc, (CanvasOverallTimeout, requests.Timeout)) or "timeout" in name:
+        return CanvasTimeoutError("Canvas did not finish within the allowed time")
+    if isinstance(exc, requests.ConnectionError):
+        return CanvasUnreachableError("Canvas could not be reached")
     return CanvasImportError(fallback)
 
 

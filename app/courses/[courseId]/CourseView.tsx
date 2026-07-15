@@ -50,6 +50,31 @@ export function CourseView({ course }: { course: CourseTreeData }) {
           </div>
         </header>
 
+        {course.importStatus === 'partial' ? (
+          <section
+            role="status"
+            aria-labelledby="partial-import-heading"
+            className="mb-4 rounded-3xl border border-amber-300 bg-amber-50 px-5 py-5 text-amber-950 shadow-panel sm:px-7"
+          >
+            <h2 id="partial-import-heading" className="text-lg font-semibold">
+              This course import is partial
+            </h2>
+            <p className="mt-2 text-sm leading-6">
+              The available course tree was preserved, including placeholders for items Canvas could not return. Review these issues before editing or exporting.
+            </p>
+            {course.importIssues.length ? (
+              <ul className="mt-3 list-disc space-y-1 pl-5 text-sm leading-6">
+                {course.importIssues.map((issue, index) => (
+                  <li key={`${issue.phase}-${issue.canvasId ?? 'none'}-${index}`}>
+                    {issue.message}
+                    {issue.canvasId ? ` (Canvas item ${issue.canvasId})` : ''}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </section>
+        ) : null}
+
         <div className="grid min-h-[calc(100vh-11rem)] gap-4 lg:grid-cols-[23rem_minmax(0,1fr)]">
           <aside className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-panel" aria-label="Course structure">
             <div className="border-b border-slate-200 px-5 py-5">

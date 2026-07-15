@@ -12,6 +12,9 @@ from canvas_import.persistence import SupabaseCourseWriter
 
 from .conftest import FIXTURES
 
+CANVAS_ORIGIN = "https://school.instructure.com"
+OTHER_ORIGIN = "https://other.instructure.com"
+
 
 @dataclass
 class FakeResponse:
@@ -25,6 +28,11 @@ class FakeQuery:
         self.operation = ""
         self.payload: dict[str, Any] | list[dict[str, Any]] | None = None
         self.filters: dict[str, Any] = {}
+        self.in_filters: dict[str, list[Any]] = {}
+
+    def select(self, _columns: str):
+        self.operation = "select"
+        return self
 
     def insert(self, payload):
         self.operation = "insert"
@@ -39,10 +47,29 @@ class FakeQuery:
         self.filters[column] = value
         return self
 
+    def in_(self, column: str, values: list[Any]):
+        self.in_filters[column] = values
+        return self
+
     def execute(self):
         if self.operation == "delete":
-            self.client.deletes.append((self.table, self.filters.copy()))
+            recorded = self.filters.copy()
+            recorded.update({key: tuple(value) for key, value in self.in_filters.items()})
+            self.client.deletes.append((self.table, recorded))
+            self.client.rows[self.table] = [
+                row
+                for row in self.client.rows.get(self.table, [])
+                if not self._matches(row)
+            ]
             return FakeResponse([])
+        if self.operation == "select":
+            return FakeResponse(
+                [
+                    {"id": row["id"]}
+                    for row in self.client.rows.get(self.table, [])
+                    if self._matches(row)
+                ]
+            )
         if self.operation != "insert" or self.payload is None:
             raise AssertionError(f"Unexpected fake query operation: {self.operation}")
         if self.client.fail_table == self.table:
@@ -55,6 +82,11 @@ class FakeQuery:
             self.client.rows.setdefault(self.table, []).append(row)
             inserted.append(row)
         return FakeResponse(inserted)
+
+    def _matches(self, row: dict[str, Any]) -> bool:
+        return all(row.get(key) == value for key, value in self.filters.items()) and all(
+            row.get(key) in values for key, values in self.in_filters.items()
+        )
 
 
 class FakeSupabase:
@@ -72,7 +104,10 @@ def test_writer_maps_the_full_classic_fixture_offline():
     course = load_fixture_course(FIXTURES / "course_classic.json")
     client = FakeSupabase()
 
-    course_id = SupabaseCourseWriter(client).write(course)  # type: ignore[arg-type]
+    course_id = SupabaseCourseWriter(client).write(  # type: ignore[arg-type]
+        course,
+        canvas_base_url=CANVAS_ORIGIN,
+    )
 
     assert course_id == client.rows["courses"][0]["id"]
     assert len(client.rows["modules"]) == 1
@@ -88,6 +123,8 @@ def test_writer_maps_the_full_classic_fixture_offline():
         True,
     ]
     assert all(row["raw_payload"] for row in client.rows["module_items"])
+    assert client.rows["courses"][0]["canvas_base_url"] == CANVAS_ORIGIN
+    assert client.rows["courses"][0]["import_status"] == "complete"
 
 
 def test_writer_requests_cascade_cleanup_after_a_partial_failure():
@@ -95,10 +132,112 @@ def test_writer_requests_cascade_cleanup_after_a_partial_failure():
     client = FakeSupabase(fail_table="pages")
 
     with pytest.raises(RuntimeError, match="forced pages failure"):
-        SupabaseCourseWriter(client).write(course)  # type: ignore[arg-type]
+        SupabaseCourseWriter(client).write(  # type: ignore[arg-type]
+            course,
+            canvas_base_url=CANVAS_ORIGIN,
+        )
 
-    inserted_course_id = client.rows["courses"][0]["id"]
-    assert ("courses", {"id": inserted_course_id}) in client.deletes
+    cleanup_deletes = [filters for table, filters in client.deletes if table == "courses"]
+    assert len(cleanup_deletes) == 1
+    assert isinstance(cleanup_deletes[0].get("id"), str)
+
+
+def test_failed_reimport_preserves_the_previous_tree():
+    course = load_fixture_course(FIXTURES / "course_classic.json")
+    client = FakeSupabase(fail_table="pages")
+    old_id = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+    other_id = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+    client.rows["courses"] = [
+        {
+            "id": old_id,
+            "canvas_base_url": CANVAS_ORIGIN,
+            "canvas_course_id": str(course.canvas_course_id),
+        },
+        {
+            "id": other_id,
+            "canvas_base_url": OTHER_ORIGIN,
+            "canvas_course_id": str(course.canvas_course_id),
+        },
+    ]
+
+    with pytest.raises(RuntimeError, match="forced pages failure"):
+        SupabaseCourseWriter(client).write(  # type: ignore[arg-type]
+            course,
+            canvas_base_url=CANVAS_ORIGIN,
+        )
+
+    remaining_ids = {row["id"] for row in client.rows["courses"]}
+    assert old_id in remaining_ids
+    assert other_id in remaining_ids
+
+
+def test_partial_issue_metadata_is_sanitized_and_persisted():
+    course = load_fixture_course(FIXTURES / "course_classic.json")
+    client = FakeSupabase()
+
+    SupabaseCourseWriter(client).write(  # type: ignore[arg-type]
+        course,
+        canvas_base_url=CANVAS_ORIGIN,
+        import_issues=[
+            {
+                "phase": "module_item",
+                "canvasId": "44",
+                "message": "Canvas resource could not be imported",
+            }
+        ],
+    )
+
+    row = client.rows["courses"][0]
+    assert row["import_status"] == "partial"
+    assert row["import_issues"] == [
+        {
+            "phase": "module_item",
+            "canvasId": "44",
+            "message": "Canvas resource could not be imported",
+        }
+    ]
+
+
+def test_successful_reimport_replaces_only_the_matching_origin_and_course():
+    course = load_fixture_course(FIXTURES / "course_classic.json")
+    client = FakeSupabase()
+    old_id = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+    other_id = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+    client.rows["courses"] = [
+        {
+            "id": old_id,
+            "canvas_base_url": CANVAS_ORIGIN,
+            "canvas_course_id": str(course.canvas_course_id),
+        },
+        {
+            "id": other_id,
+            "canvas_base_url": OTHER_ORIGIN,
+            "canvas_course_id": str(course.canvas_course_id),
+        },
+    ]
+
+    new_id = SupabaseCourseWriter(client).write(  # type: ignore[arg-type]
+        course,
+        canvas_base_url=CANVAS_ORIGIN,
+    )
+
+    remaining_ids = {row["id"] for row in client.rows["courses"]}
+    assert old_id not in remaining_ids
+    assert other_id in remaining_ids
+    assert new_id in remaining_ids
+
+
+def test_default_credentials_never_fall_back_to_a_publishable_key(monkeypatch):
+    monkeypatch.delenv("SUPABASE_SECRET_KEY", raising=False)
+    monkeypatch.setenv("NEXT_PUBLIC_SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setenv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "sb_publishable_not-secret")
+
+    with pytest.raises(ValueError, match="SUPABASE_SECRET_KEY"):
+        SupabaseCourseWriter()
+    with pytest.raises(ValueError, match="server secret key"):
+        SupabaseCourseWriter(
+            url="https://example.supabase.co", key="sb_publishable_not-secret"
+        )
 
 
 @pytest.mark.live
@@ -107,14 +246,17 @@ def test_live_supabase_writer_preserves_structure_and_grading(fixture_name: str)
     if os.getenv("RUN_SUPABASE_LIVE_TESTS") != "1":
         pytest.skip("set RUN_SUPABASE_LIVE_TESTS=1 to mutate the Supabase dev project")
     url = os.getenv("NEXT_PUBLIC_SUPABASE_URL")
-    key = os.getenv("NEXT_PUBLIC_SUPABASE_ANON_KEY")
+    key = os.getenv("SUPABASE_SECRET_KEY")
     if not url or not key:
-        pytest.skip("requires the public Supabase URL and key")
+        pytest.skip("requires the Supabase URL and secret key")
 
     course = load_fixture_course(FIXTURES / fixture_name)
     course.canvas_course_id = f"writer-test-{course.canvas_course_id}"
     client = create_client(url, key)
-    course_id = SupabaseCourseWriter(client).write(course)
+    course_id = SupabaseCourseWriter(client).write(
+        course,
+        canvas_base_url=CANVAS_ORIGIN,
+    )
 
     try:
         modules = (

@@ -17,9 +17,9 @@ class SupabasePersistenceError(RuntimeError):
 class SupabaseCourseWriter:
     """Replace one imported course with a complete relational scratchpad tree.
 
-    The writer deliberately replaces by ``canvas_course_id``. If any child
-    insert fails after the new course row is created, deleting that row lets
-    the schema's ``ON DELETE CASCADE`` constraints remove the partial tree.
+    The complete new tree is written before the previous owner-scoped tree is
+    deleted. A child failure therefore cleans up only the new row and leaves the
+    professor's prior scratchpad intact.
     """
 
     def __init__(
@@ -34,20 +34,44 @@ class SupabaseCourseWriter:
             return
 
         resolved_url = url or os.getenv("NEXT_PUBLIC_SUPABASE_URL")
-        resolved_key = key or os.getenv("NEXT_PUBLIC_SUPABASE_ANON_KEY")
+        resolved_key = key or os.getenv("SUPABASE_SECRET_KEY")
         if not resolved_url or not resolved_key:
             raise ValueError(
-                "Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY"
+                "Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SECRET_KEY"
             )
+        if resolved_key.startswith("sb_publishable_"):
+            raise ValueError("Supabase persistence requires a server secret key")
         self.client = create_client(resolved_url, resolved_key)
 
-    def write(self, course: Course) -> str:
+    def write(
+        self,
+        course: Course,
+        *,
+        canvas_base_url: str,
+        import_issues: Sequence[Any] = (),
+    ) -> str:
         """Replace and persist ``course``, returning its generated UUID."""
 
+        if not canvas_base_url:
+            raise ValueError("canvas_base_url is required")
         canvas_course_id = _canvas_id(course.canvas_course_id)
-        self.client.table("courses").delete().eq(
-            "canvas_course_id", canvas_course_id
-        ).execute()
+        prior_response = (
+            self.client.table("courses")
+            .select("id")
+            .eq("canvas_base_url", canvas_base_url)
+            .eq("canvas_course_id", canvas_course_id)
+            .execute()
+        )
+        prior_rows = prior_response.data
+        if not isinstance(prior_rows, list) or any(
+            not isinstance(row, dict) or not isinstance(row.get("id"), str)
+            for row in prior_rows
+        ):
+            raise SupabasePersistenceError(
+                "Could not identify the previous imported course"
+            )
+        prior_ids = [row["id"] for row in prior_rows]
+        issues = [_sanitized_issue(issue) for issue in import_issues][:100]
 
         course_id: str | None = None
         try:
@@ -56,6 +80,9 @@ class SupabaseCourseWriter:
                 {
                     "canvas_course_id": canvas_course_id,
                     "name": course.name,
+                    "canvas_base_url": canvas_base_url,
+                    "import_status": "partial" if issues else "complete",
+                    "import_issues": issues,
                     "raw_payload": course.raw_payload,
                 },
             )
@@ -100,6 +127,9 @@ class SupabaseCourseWriter:
                         for file in course.files
                     ],
                 )
+
+            if prior_ids:
+                self.client.table("courses").delete().in_("id", prior_ids).execute()
         except Exception as exc:
             if course_id is not None:
                 try:
@@ -190,6 +220,31 @@ class SupabaseCourseWriter:
 
 def _canvas_id(value: int | str) -> str:
     return str(value)
+
+
+def _sanitized_issue(issue: Any) -> dict[str, str | None]:
+    if isinstance(issue, Mapping):
+        phase = issue.get("phase")
+        canvas_id = issue.get("canvasId", issue.get("canvas_id"))
+        message = issue.get("message")
+    else:
+        phase = getattr(issue, "phase", None)
+        canvas_id = getattr(issue, "canvas_id", None)
+        message = getattr(issue, "message", None)
+    return {
+        "phase": _bounded_text(phase, 64, "resource"),
+        "canvasId": (
+            _bounded_text(canvas_id, 128, "unknown")
+            if canvas_id is not None
+            else None
+        ),
+        "message": _bounded_text(message, 160, "Canvas resource could not be imported"),
+    }
+
+
+def _bounded_text(value: Any, length: int, fallback: str) -> str:
+    text = str(value) if value is not None else fallback
+    return text[:length]
 
 
 def _required_uuid(row: Mapping[str, Any], table: str) -> str:

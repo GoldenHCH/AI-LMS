@@ -34,19 +34,19 @@ read-only. See `backend/spikes/quiz_writeback/FINDINGS.md`.
 **MVP auth path — manual base URL + personal access token (PAT).** For MVP we use a manual credential form, not OAuth. The instructor generates a personal access token in Canvas (Account → Settings → New Access Token) and pastes it with their Canvas base URL. This needs no developer-key registration or admin approval, and maps to the existing `CanvasAdapter.from_access_token(...)` path (`backend/canvas_import/canvas/adapter.py`). OAuth is deferred — see #2b.
 
 **Acceptance criteria**
-- [ ] A connect form accepts a **Canvas base URL** (e.g. `https://school.instructure.com`) and a **personal access token**; the token field is masked (password input).
-- [ ] The token is validated against Canvas before import (e.g. `GET /users/self`); an invalid token or unreachable/malformed URL shows a clear, specific error and no course row is created.
-- [ ] On valid credentials, the instructor sees their Canvas course list and selects exactly one course to import.
-- [ ] Import pulls modules, pages, and quizzes into the internal model (#3) and persists them to the Supabase scratchpad via `SupabaseCourseWriter`, then lands the instructor on the course tree view (#4).
-- [ ] Files (PPTX/PDF) are listed as read-only context, not imported as editable.
-- [ ] Import is non-destructive — the source Canvas course is unmodified (GET-only; already enforced by the adapter and its round-trip test).
-- [ ] New Quizzes import but are surfaced read-only (write-back stays gated on #1).
-- [ ] Clear error/empty states for auth failure, no courses, and partial import (`PartialImportError` — failed items preserved as `opaque`, never silently dropped).
+- [x] A connect form accepts a **Canvas base URL** (e.g. `https://school.instructure.com`) and a **personal access token**; the token field is masked (password input).
+- [x] The token is validated against Canvas before import (e.g. `GET /users/self`); an invalid token or unreachable/malformed URL shows a clear, specific error and no course row is created.
+- [x] On valid credentials, the instructor sees their Canvas course list and selects exactly one course to import.
+- [x] Import pulls modules, pages, and quizzes into the internal model (#3) and persists them to the Supabase scratchpad via `SupabaseCourseWriter`, then lands the instructor on the course tree view (#4).
+- [x] Files (PPTX/PDF) are listed as read-only context, not imported as editable.
+- [x] Import is non-destructive — the source Canvas course is unmodified (GET-only; already enforced by the adapter and its round-trip test).
+- [x] New Quizzes import but are surfaced read-only (write-back stays gated on #1).
+- [x] Clear error/empty states for auth failure, no courses, and partial import (`PartialImportError` — failed items preserved as `opaque`, never silently dropped).
 
 **Token handling (non-negotiable)**
-- [ ] The access token is used **server-side only**, in-memory for the duration of the import request. It is **never** written to the database, logs, error messages, analytics, or the browser (no `localStorage`/cookie). Only `courses.canvas_base_url` is persisted (matches the live schema and CLAUDE.md).
-- [ ] The token is never placed in a URL or query string; it travels in a request body over HTTPS.
-- [ ] Consult the `eduquest-compliance` guardrails when implementing credential handling.
+- [x] The access token exists only in the browser's transient form state while typed and in request-local server memory during connect/import. It is **never** written to browser storage, cookies, URLs, the database, logs, error messages, or analytics. Only the normalized `courses.canvas_base_url` is persisted.
+- [x] The token is never placed in a URL or query string; it travels in a request body over HTTPS.
+- [x] Consult the `eduquest-compliance` guardrails when implementing credential handling.
 
 ---
 

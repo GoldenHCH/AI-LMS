@@ -5,18 +5,13 @@ import { cookies } from 'next/headers'
 
 import type { Database } from '@/lib/supabase/types'
 
+import { getSupabaseBrowserCredentials } from './env'
+
 export async function createClient() {
   const cookieStore = await cookies()
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  const { url, publishableKey } = getSupabaseBrowserCredentials()
 
-  if (!supabaseUrl || !supabaseKey) {
-    throw new Error(
-      'Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY.',
-    )
-  }
-
-  return createServerClient<Database>(supabaseUrl, supabaseKey, {
+  return createServerClient<Database>(url, publishableKey, {
     cookies: {
       getAll() {
         return cookieStore.getAll()
@@ -27,8 +22,7 @@ export async function createClient() {
             cookieStore.set(name, value, options),
           )
         } catch {
-          // Server Components cannot write cookies. A future auth proxy will
-          // own token refresh; this view currently performs anonymous reads.
+          // Server Components cannot write cookies; proxy.ts owns refresh.
         }
       },
     },

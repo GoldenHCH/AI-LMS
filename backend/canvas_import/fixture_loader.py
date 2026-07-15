@@ -93,7 +93,12 @@ class FixtureCanvas:
             raise FixtureHttpError(404)
         return FixtureCourse(self.fixture, self.calls)
 
-    def get_courses(self) -> list[dict[str, Any]]:
+    def get_courses(self, **kwargs: Any) -> list[dict[str, Any]]:
+        if kwargs != {
+            "enrollment_type": ["teacher", "ta", "designer"],
+            "enrollment_state": "active",
+        }:
+            raise AssertionError(f"Unexpected course options: {kwargs!r}")
         self.calls.append(("GET", "courses"))
         return [deepcopy(self.fixture["course"])]
 

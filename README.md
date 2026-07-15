@@ -9,8 +9,8 @@ This repository contains the lossless import foundation for the Canvas course ed
 - LMS-agnostic `Course → Module → Item` model with pages, Classic/New quizzes, questions,
   answers, read-only files, and opaque unsupported items.
 - Raw HTML and all Canvas IDs/positions preserved through a versioned JSON working copy.
-- Read-only `canvasapi` import adapter plus raw New Quiz REST client.
-- OAuth2 URL/token primitives with state validation and no token persistence in course files.
+- Read-only `canvasapi` import adapter plus raw New Quiz REST client behind a protected FastAPI sidecar.
+- Transient Canvas PAT connect flow; tokens are never persisted in browser storage, Supabase, or working-copy files.
 - Canvas-facing dry-run export snapshots and two independent round-trip fixtures.
 - Live Classic/New Quiz write-back probes with safe restore behavior.
 
@@ -52,23 +52,26 @@ This repo is wired to the Supabase project **AI LMS** (`mlczrzmwtmmycmurjity`, r
    cp .env.example .env   # .env already contains the project's URL + publishable key
    ```
    - `NEXT_PUBLIC_SUPABASE_URL` — the project API URL
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` — the publishable (client-safe) key
+   - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` — the publishable (client-safe) key
    - `SUPABASE_SECRET_KEY` — server-only secret; add it yourself from Dashboard → Settings → API. **Never commit it.**
+   - `CANVAS_IMPORT_SERVICE_TOKEN` — high-entropy shared secret used only between Next.js and the sidecar
+   - `CANVAS_IMPORT_SERVICE_URL` — the FastAPI sidecar origin
 
 2. Install the client dependency:
    ```bash
    npm install
    ```
 
-### Usage
+### Run the authenticated app and import sidecar
 
-```ts
-import { supabase } from './lib/supabase/client.ts'
+Supabase Auth must be configured as invite-only email magic links. Every instructor must enroll and verify a TOTP factor before RLS exposes course rows.
 
-const { data, error } = await supabase.from('some_table').select('*')
+```bash
+python -m uvicorn canvas_import.service.app:app --app-dir backend --port 8000
+npm run dev
 ```
 
-The client in [lib/supabase/client.ts](lib/supabase/client.ts) is framework-agnostic. When the Next.js app lands, swap it for `@supabase/ssr` browser/server clients — the env var names already follow the Next.js convention, so nothing else changes.
+The browser uses only the publishable key. Course writes and content-free audit events occur inside the already-authorized Python sidecar with the server secret key. Course reads are owner-scoped and require an `aal2` claim through RLS.
 
 ### Verify the connection
 

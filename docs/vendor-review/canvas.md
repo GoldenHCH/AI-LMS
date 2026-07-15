@@ -11,7 +11,7 @@ items below are completed.**
 | Institution has enabled an appropriate developer key | Pending per tenant | Canvas OAuth developer keys are controlled by the institution/root account or Instructure. |
 | Data residency documented | Pending per tenant | Canvas deployment and the application storage region must be recorded. |
 | COPPA / FERPA roles documented | Pending contract | This phase is instructor-facing and imports no student records, but course content may still be confidential. |
-| Deletion on request supported | Application design complete | Working copies have `delete_after`; the production deletion worker and certificate process remain host work. |
+| Deletion on request supported | Retention worker implemented | Daily hard deletion is scheduled; deletion-request operations and certificate process remain deployment work. |
 | Breach notification SLA | Pending contract | Use the most restrictive applicable school/state term. |
 | Sub-processor list available | Pending | Record Canvas/Instructure and application infrastructure disclosures. |
 
@@ -19,7 +19,7 @@ items below are completed.**
 
 - From Canvas: course/module/item IDs and order; instructor-authored page HTML; quiz definitions,
   questions, answer options, answer keys, points; file metadata and URLs.
-- To Canvas during this phase: OAuth protocol requests and read-only API calls. The isolated
+- To Canvas during this phase: PAT-authenticated, read-only API calls. The isolated
   fidelity spike can write to a deliberately selected test quiz only after explicit CLI
   confirmation; it is not an application flow.
 - Explicitly excluded: student rosters, profiles, submissions, grades, attendance, analytics,
@@ -28,6 +28,6 @@ items below are completed.**
 ## Security configuration
 
 - TLS/HTTPS is mandatory for Canvas origins.
-- Use least-privilege scoped OAuth tokens and encrypted server-side token storage.
+- Keep PATs transient in the connect/import request only; never persist them server-side or in the browser.
 - Never put Canvas tokens or raw course content in logs or third-party analytics.
 - Run live probes only in an unpublished, isolated course with no student submissions.

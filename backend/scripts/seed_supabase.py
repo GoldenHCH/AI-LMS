@@ -21,11 +21,15 @@ DEFAULT_FIXTURES = ("course_classic.json", "course_new_quiz.json")
 
 
 def _load_local_env(path: Path) -> None:
-    """Load the two public Supabase settings without adding another dependency."""
+    """Load the explicit server-only settings without adding another dependency."""
 
     if not path.exists():
         return
-    wanted = {"NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_ANON_KEY"}
+    wanted = {
+        "NEXT_PUBLIC_SUPABASE_URL",
+        "SUPABASE_SECRET_KEY",
+        "SUPABASE_SEED_CANVAS_BASE_URL",
+    }
     for raw_line in path.read_text(encoding="utf-8").splitlines():
         line = raw_line.strip()
         if not line or line.startswith("#") or "=" not in line:
@@ -43,10 +47,16 @@ def _load_local_env(path: Path) -> None:
 def main() -> int:
     _load_local_env(REPO_ROOT / ".env")
     writer = SupabaseCourseWriter()
+    canvas_base_url = os.getenv("SUPABASE_SEED_CANVAS_BASE_URL")
+    if not canvas_base_url:
+        raise RuntimeError("SUPABASE_SEED_CANVAS_BASE_URL is required")
 
     for fixture_name in DEFAULT_FIXTURES:
         course = load_fixture_course(FIXTURES / fixture_name)
-        course_id = writer.write(course)
+        course_id = writer.write(
+            course,
+            canvas_base_url=canvas_base_url,
+        )
         module_count = len(course.modules)
         item_count = sum(len(module.items) for module in course.modules)
         print(
