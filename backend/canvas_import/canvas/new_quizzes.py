@@ -61,11 +61,26 @@ class NewQuizClient:
     def list_quizzes(self, course_id: int | str) -> list[dict[str, Any]]:
         return self._get_paginated(NewQuizEndpoints(course_id).quizzes)
 
-    def get_quiz(self, course_id: int | str, assignment_id: int | str) -> dict[str, Any]:
+    def get_quiz(
+        self, course_id: int | str, assignment_id: int | str
+    ) -> dict[str, Any]:
         return self._request("GET", NewQuizEndpoints(course_id).quiz(assignment_id))
 
-    def list_items(self, course_id: int | str, assignment_id: int | str) -> list[dict[str, Any]]:
+    def list_items(
+        self, course_id: int | str, assignment_id: int | str
+    ) -> list[dict[str, Any]]:
         return self._get_paginated(NewQuizEndpoints(course_id).items(assignment_id))
+
+    def get_item(
+        self,
+        course_id: int | str,
+        assignment_id: int | str,
+        item_id: int | str,
+    ) -> dict[str, Any]:
+        return self._request(
+            "GET",
+            NewQuizEndpoints(course_id).item(assignment_id, item_id),
+        )
 
     def update_quiz(
         self,
@@ -150,10 +165,19 @@ def _as_result_list(payload: Any) -> list[dict[str, Any]]:
     if isinstance(payload, list):
         values: Iterable[Any] = payload
     elif isinstance(payload, dict):
-        values = payload.get("items", payload.get("quizzes", []))
+        if "items" in payload:
+            values = payload["items"]
+        elif "quizzes" in payload:
+            values = payload["quizzes"]
+        else:
+            raise NewQuizApiError(
+                "Canvas paginated response has no items or quizzes collection"
+            )
     else:
         raise NewQuizApiError("Canvas returned an unexpected paginated response")
-    if not isinstance(values, list) or any(not isinstance(value, dict) for value in values):
+    if not isinstance(values, list) or any(
+        not isinstance(value, dict) for value in values
+    ):
         raise NewQuizApiError("Canvas returned invalid objects in a paginated response")
     return list(values)
 
@@ -164,7 +188,9 @@ def _validated_base_url(base_url: str) -> str:
     if parsed.scheme != "https" or not parsed.netloc:
         raise ValueError("Canvas base_url must be an absolute HTTPS URL")
     if parsed.username or parsed.password or parsed.query or parsed.fragment:
-        raise ValueError("Canvas base_url must not contain credentials, a query, or a fragment")
+        raise ValueError(
+            "Canvas base_url must not contain credentials, a query, or a fragment"
+        )
     return value
 
 

@@ -70,11 +70,13 @@ Phase 0 is a concierge test: hand-produce one real professor's intended next-sem
 
 _Chosen incrementally — update as decisions land._
 
-- **Database / backend:** **Supabase** (managed Postgres 17). Project `AI LMS` (`mlczrzmwtmmycmurjity`, region `ca-central-1`). Access via `@supabase/supabase-js`; client lives in `lib/supabase/client.ts`. Credentials in `.env` (gitignored; template in `.env.example`), using the **publishable** key. Env vars follow the Next.js convention: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`. **DB is currently empty** — no schema yet; the Data model section above is the design target.
+- **Database / backend:** **Supabase** (managed Postgres 17). Project `AI LMS` (`mlczrzmwtmmycmurjity`, region `ca-central-1`). Access via `@supabase/supabase-js`; client lives in `lib/supabase/client.ts`. Credentials in `.env` (gitignored; template in `.env.example`), using the **publishable** key. Env vars follow the Next.js convention: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`. **Course schema is live** (migration `supabase/migrations/0001_create_course_scratchpad_schema.sql`): a faithful relational mirror of the `canvas_import` model — `courses → modules → module_items → (pages | quizzes | files | opaque)`, `quizzes → quiz_questions → quiz_answers`, each row carrying a `raw_payload jsonb` for lossless round-trip. It stores an imported course as an editable **scratchpad** before export. **RLS is enabled on every table with no public policies**, so the anon key cannot read/write course data — all access must be server-side via the **secret** key. The Canvas access token is never stored (only `canvas_base_url`). Generated types in `lib/supabase/types.ts`; regenerate after schema changes.
 - **App framework:** **Next.js** with **`@supabase/ssr`** for auth/session. Chosen direction, **not yet scaffolded** — the repo today is credentials-only wiring.
+- **Canvas import core:** Python 3.11+, `canvasapi` 3.6.0 for Classic resources,
+  `requests` for New Quiz REST endpoints, LMS-agnostic dataclasses, and a versioned JSON MVP
+  working copy. New Quiz write-back stays disabled until the live fidelity spike passes.
 - **Still TBD:**
   - Agent / LLM layer — Claude (Anthropic API) is the working default; not formally locked.
-  - Canvas API client — Canvas REST; Classic vs New Quizzes pending the Issue #1 spike.
   - Hosting / deploy — Vercel is the natural fit with Next.js; undecided.
 
 **Commands**
@@ -90,10 +92,18 @@ Two Claude skills generate new course artifacts as Canvas-API-ready JSON, built 
 - `.claude/skills/write-content/` — article-style content pages (textbook replacement), from objectives
 
 Both emit a JSON envelope (`artifact_type`, `objectives`, `canvas` payloads, `alignment` map) and must pass `node scripts/validate-canvas-payload.mjs <file>` before anything is shown as final. The validator enforces upload-shape correctness plus the alignment rules (no orphan objectives/items, `published` never true). Worked examples live in each skill's `references/` and double as test fixtures for `npm test`.
+- `pip install -r requirements-dev.txt` — install the Canvas core and test dependencies
+- `python -m pytest -q` — run the offline lossless round-trip suite
 
 **Repo layout (so far)**
 - `lib/supabase/client.ts` — configured Supabase client
+- `lib/supabase/types.ts` — generated DB types (regenerate after migrations)
+- `supabase/migrations/` — SQL schema migrations (source of truth for the DB)
 - `scripts/check-supabase.mjs` — connection verification
+- `canvas_import/model/` — LMS-agnostic course working-copy model
+- `canvas_import/canvas/` — Canvas OAuth/import/New Quiz adapter boundary
+- `spikes/quiz_writeback/` — explicit live fidelity probes
+- `tests/roundtrip/` — offline and opt-in live round-trip gates
 - `.env` / `.env.example` — Supabase credentials + template
 - `MVP-Spec.md`, `Phase1-Issues.md` — PRD + Phase 1 build breakdown
 

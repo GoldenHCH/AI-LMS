@@ -5,7 +5,13 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from ._serialization import CanvasId, JsonObject, json_copy, links_from_dict, optional_json_object
+from ._serialization import (
+    CanvasId,
+    JsonObject,
+    json_copy,
+    links_from_dict,
+    optional_json_object,
+)
 
 
 @dataclass(slots=True)

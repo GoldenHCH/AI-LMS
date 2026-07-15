@@ -133,7 +133,9 @@ class CanvasOAuthClient:
             payload: Any = response.json()
         except (requests.RequestException, requests.JSONDecodeError) as exc:
             raise OAuthError("Canvas OAuth token exchange failed") from exc
-        if not isinstance(payload, dict) or not isinstance(payload.get("access_token"), str):
+        if not isinstance(payload, dict) or not isinstance(
+            payload.get("access_token"), str
+        ):
             raise OAuthError("Canvas OAuth response did not include an access token")
         expires_in = payload.get("expires_in")
         expires_at = None

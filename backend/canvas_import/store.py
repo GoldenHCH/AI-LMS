@@ -125,7 +125,11 @@ class WorkingCopyStore:
         try:
             delete_after = datetime.fromisoformat(envelope["delete_after"])
         except (KeyError, TypeError, ValueError) as exc:
-            raise WorkingCopyError(f"Working copy has no valid retention deadline: {exc}") from exc
+            raise WorkingCopyError(
+                f"Working copy has no valid retention deadline: {exc}"
+            ) from exc
         if delete_after.tzinfo is None:
-            raise WorkingCopyError("Working-copy retention deadline must include a timezone")
+            raise WorkingCopyError(
+                "Working-copy retention deadline must include a timezone"
+            )
         return delete_after

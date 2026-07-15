@@ -5,7 +5,13 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
-from ._serialization import CanvasId, JsonObject, json_copy, links_from_dict, optional_json_object
+from ._serialization import (
+    CanvasId,
+    JsonObject,
+    json_copy,
+    links_from_dict,
+    optional_json_object,
+)
 
 QuizEngine = Literal["classic", "new"]
 
@@ -101,7 +107,9 @@ class Quiz:
         if self.engine not in ("classic", "new"):
             raise ValueError(f"Unsupported quiz engine: {self.engine}")
         if self.question_count != len(self.questions):
-            raise ValueError("question_count must equal the number of imported questions")
+            raise ValueError(
+                "question_count must equal the number of imported questions"
+            )
 
     @property
     def editable(self) -> bool:
@@ -125,7 +133,9 @@ class Quiz:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Quiz:
-        questions = [Question.from_dict(question) for question in data.get("questions", [])]
+        questions = [
+            Question.from_dict(question) for question in data.get("questions", [])
+        ]
         return cls(
             quiz_id=data["quiz_id"],
             engine=data["engine"],
