@@ -51,7 +51,7 @@ Verified against Instructure docs (full reference with sources: `~/Research/canv
 }
 ```
 
-`position` starts at 1 and must be contiguous. `feedback` and `answer_feedback` are where the pedagogy lives — feedback roughly doubles the learning effect of a quiz, so never ship an item without it.
+`position` starts at 1 and must be contiguous. `feedback` and `answer_feedback` are where the pedagogy lives — feedback roughly doubles the learning effect of a quiz, so never ship an item without it. For choice items the validator requires `answer_feedback` for **every** option, not just the correct one: a student who picked option C learns nothing from "incorrect", but learns the actual concept from "C confuses NADH with NADPH — one phosphate apart, different pathway."
 
 ## Per-type shapes
 

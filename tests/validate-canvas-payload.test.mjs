@@ -370,6 +370,111 @@ test("rejects alignment naming a rubric criterion that does not exist", () => {
   rejects(bad, "criterion_key");
 });
 
+// --- Dead-rule cover. Each of these rules could previously be deleted outright with the
+// --- whole suite still green — no CI signal would fire on a bad refactor. Assert on each
+// --- rule's OWN message, not a generic path substring, or a downstream error masks the
+// --- deletion and the test goes on passing for the wrong reason.
+
+test("rejects an envelope with no title", () => {
+  const bad = clone(QUIZ);
+  bad.title = "";
+  rejects(bad, "title: must be a non-empty string");
+});
+
+test("rejects an empty alignment array", () => {
+  const bad = clone(QUIZ);
+  bad.alignment = [];
+  rejects(bad, "non-empty array mapping artifacts");
+});
+
+test("rejects a quiz with no items", () => {
+  const bad = clone(QUIZ);
+  bad.canvas.items = [];
+  rejects(bad, "non-empty array of New Quiz item payloads");
+});
+
+test("rejects an assignment with negative points", () => {
+  const bad = clone(ASSIGNMENT);
+  bad.canvas.assignment.points_possible = -5;
+  rejects(bad, "must be a number >= 0");
+});
+
+test("rejects an item_position outside the item range", () => {
+  const bad = clone(QUIZ);
+  bad.alignment[0].item_position = 99;
+  rejects(bad, "must be an integer between 1 and");
+});
+
+test("rejects a page_index outside the page range", () => {
+  const bad = clone(PAGE);
+  bad.alignment[0].page_index = 99;
+  rejects(bad, "must be an integer between 0 and");
+});
+
+test("rejects an entry missing interaction_data or scoring_data", () => {
+  const noInteraction = clone(QUIZ);
+  delete noInteraction.canvas.items[0].item.entry.interaction_data;
+  rejects(noInteraction, "interaction_data");
+
+  const noScoring = clone(QUIZ);
+  delete noScoring.canvas.items[0].item.entry.scoring_data;
+  rejects(noScoring, "scoring_data");
+});
+
+// --- Dates. Canvas enforces unlock_at <= due_at <= lock_at and 400s otherwise; a
+// --- window that closes before the due date locks students out of their own work.
+
+test("rejects a non-ISO due_at that Date.parse would happily accept", () => {
+  const bad = clone(ASSIGNMENT);
+  bad.canvas.assignment.due_at = "March 5, 2026"; // parses fine in JS, rejected by Canvas
+  rejects(bad, "ISO 8601");
+});
+
+test("rejects lock_at before due_at", () => {
+  const bad = clone(ASSIGNMENT);
+  bad.canvas.assignment.due_at = "2026-09-15T23:59:00Z";
+  bad.canvas.assignment.lock_at = "2026-09-01T23:59:00Z";
+  rejects(bad, "locked out before the work is due");
+});
+
+test("rejects unlock_at after due_at", () => {
+  const bad = clone(ASSIGNMENT);
+  bad.canvas.assignment.due_at = "2026-09-15T23:59:00Z";
+  bad.canvas.assignment.unlock_at = "2026-10-01T00:00:00Z";
+  rejects(bad, "due before students can open it");
+});
+
+test("accepts a correctly ordered availability window", () => {
+  const good = clone(ASSIGNMENT);
+  good.canvas.assignment.unlock_at = "2026-09-01T00:00:00Z";
+  good.canvas.assignment.due_at = "2026-09-15T23:59:00Z";
+  good.canvas.assignment.lock_at = "2026-09-22T23:59:00Z";
+  assert.deepEqual(validate(good), []);
+});
+
+test("checks quiz dates, not just assignment dates", () => {
+  const bad = clone(QUIZ);
+  bad.canvas.quiz.due_at = "sometime next week";
+  rejects(bad, "ISO 8601");
+});
+
+// --- Per-option feedback: the research's highest-leverage rule. Previously promised
+// --- by the skill and enforced by nothing.
+
+test("rejects a choice item with no answer_feedback", () => {
+  const bad = clone(QUIZ);
+  delete bad.canvas.items[0].item.entry.answer_feedback;
+  rejects(bad, "answer_feedback");
+});
+
+test("rejects a choice item missing feedback for one distractor", () => {
+  // The likeliest real failure: three options explained, the fourth quietly skipped.
+  const bad = clone(QUIZ);
+  const choices = bad.canvas.items[0].item.entry.interaction_data.choices;
+  delete bad.canvas.items[0].item.entry.answer_feedback[choices[2].id];
+  rejects(bad, "missing feedback for this option");
+});
+
 // --- Canvas-unsafe HTML. Canvas silently strips these, so the professor would
 // --- approve content that then renders broken or empty in the live course.
 
@@ -407,4 +512,82 @@ test("rejects an empty page body", () => {
   const bad = clone(PAGE);
   bad.canvas.pages[0].wiki_page.body = "   ";
   rejects(bad, "body");
+});
+
+test("rejects a <style> block and a <form>, which Canvas strips at render", () => {
+  const styled = clone(PAGE);
+  styled.canvas.pages[0].wiki_page.body += "<style>.x{color:red}</style>";
+  rejects(styled, "style");
+
+  const formed = clone(PAGE);
+  formed.canvas.pages[0].wiki_page.body += '<form><input type="text"></form>';
+  rejects(formed, "form");
+});
+
+test("rejects a javascript: URI — this one is executable, not merely stripped", () => {
+  const bad = clone(PAGE);
+  bad.canvas.pages[0].wiki_page.body += '<a href="javascript:steal()">Read more</a>';
+  rejects(bad, "javascript:");
+});
+
+test("rejects a javascript: URI obfuscated with whitespace", () => {
+  // Browsers parse "jav\tascript:" as the javascript scheme; a naive check misses it.
+  const bad = clone(PAGE);
+  bad.canvas.pages[0].wiki_page.body += '<a href="jav\tascript:steal()">Read more</a>';
+  rejects(bad, "javascript:");
+});
+
+test("does not reject ordinary prose containing an on-word before an equals sign", () => {
+  // A biology page defining "oncogene = a mutated gene" is exactly the content this
+  // product exists to write. A naive /\son[a-z]+=/ rejects it as an event handler.
+  const good = clone(PAGE);
+  good.canvas.pages[0].wiki_page.body +=
+    "<p>In shorthand: oncogene = a gene that drives cancer when mutated, and onset = the age symptoms begin.</p>";
+  assert.deepEqual(validate(good), []);
+});
+
+test("scans feedback HTML, not just the stem", () => {
+  const inFeedback = clone(QUIZ);
+  inFeedback.canvas.items[0].item.entry.feedback.correct += "<script>alert(1)</script>";
+  rejects(inFeedback, "script");
+
+  const inAnswerFeedback = clone(QUIZ);
+  const firstId = inAnswerFeedback.canvas.items[0].item.entry.interaction_data.choices[0].id;
+  inAnswerFeedback.canvas.items[0].item.entry.answer_feedback[firstId] += "<script>alert(1)</script>";
+  rejects(inAnswerFeedback, "script");
+});
+
+// --- The hallucinated-enum regression. "wiki_page" is the Pages API's wrapper key, not
+// --- a submission type; it was wrong in both the validator and the skill's reference doc,
+// --- so the skill would have taught it and the validator would have blessed it.
+
+test("rejects wiki_page as a submission_type", () => {
+  const bad = clone(ASSIGNMENT);
+  bad.canvas.assignment.submission_types = ["wiki_page"];
+  rejects(bad, "is not a Canvas submission type");
+});
+
+test("rejects a duplicate rubric criterion alignment", () => {
+  const bad = clone(ASSIGNMENT);
+  bad.alignment.push({ criterion_key: "0", objective_id: "LO3", bloom_verb: "interpret" });
+  rejects(bad, "aligned more than once");
+});
+
+test("rejects an orphan rubric criterion", () => {
+  const bad = clone(ASSIGNMENT);
+  bad.canvas.rubric.criteria["2"] = {
+    description: "Aligned to nothing",
+    points: 0.0001,
+    ratings: [
+      { description: "Yes", points: 0.0001 },
+      { description: "No", points: 0 },
+    ],
+  };
+  rejects(bad, "orphan criterion");
+});
+
+test("rejects an assignment alignment entry with no bloom_verb", () => {
+  const bad = clone(ASSIGNMENT);
+  delete bad.alignment[0].bloom_verb;
+  rejects(bad, "bloom_verb");
 });

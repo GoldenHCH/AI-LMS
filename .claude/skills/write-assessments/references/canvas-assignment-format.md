@@ -32,7 +32,7 @@ Verified against Instructure docs (full reference: `~/Research/canvas-lti-edtech
 | `name` | required |
 | `description` | HTML; this is where the task prompt, objectives, and expectations go |
 | `points_possible` | number; should equal the rubric's total when a rubric is attached |
-| `submission_types` | array. Enum: `online_text_entry`, `online_url`, `online_upload`, `media_recording`, `student_annotation`, `on_paper`, `external_tool`, `none`, `discussion_topic`, `online_quiz`, `wiki_page` |
+| `submission_types` | array. Exactly these ten: `online_text_entry`, `online_url`, `online_upload`, `media_recording`, `student_annotation`, `on_paper`, `external_tool`, `none`, `discussion_topic`, `online_quiz`. (`wiki_page` is the Pages API's wrapper key and looks like it belongs here — it doesn't, and Canvas rejects it.) |
 | `grading_type` | Enum: `points`, `percent`, `letter_grade`, `gpa_scale`, `pass_fail`, `not_graded` |
 | `allowed_extensions` | only meaningful with `online_upload` |
 | `due_at` / `lock_at` / `unlock_at` | ISO 8601 |

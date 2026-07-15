@@ -8,13 +8,19 @@ import { readFileSync } from "node:fs";
 
 const ARTIFACT_TYPES = ["new_quiz", "assignment", "page"];
 
-// Canvas Classic submission_types / grading_type enums (Assignments API).
+// Canvas submission_types / grading_type enums (Assignments API). Exactly these ten —
+// "wiki_page" looks like it belongs here but is the Pages API's wrapper key, not a
+// submission type; Canvas rejects it.
 const SUBMISSION_TYPES = [
   "online_text_entry", "online_url", "online_upload", "media_recording",
   "student_annotation", "on_paper", "external_tool", "none",
-  "discussion_topic", "online_quiz", "wiki_page",
+  "discussion_topic", "online_quiz",
 ];
 const GRADING_TYPES = ["points", "percent", "letter_grade", "gpa_scale", "pass_fail", "not_graded"];
+
+// Canvas documents due_at/lock_at/unlock_at as ISO 8601. Date.parse alone is far too
+// lax — it happily accepts "March 5, 2026", which Canvas then rejects.
+const ISO_8601 = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
 
 // New Quizzes interaction types this product generates, with the
 // scoring_algorithm values Canvas accepts for each.
@@ -27,11 +33,25 @@ const QUIZ_ITEM_SPECS = {
   "numeric": { algorithms: ["Numeric"] },
 };
 
-// HTML that Canvas strips or that would execute — never allowed in bodies.
+// HTML that Canvas strips, or that would execute. Two different harms share this list:
+// executable content (a real XSS risk in a page students load), and silently-stripped
+// markup (the professor approves something that renders wrong or empty).
 const UNSAFE_HTML = [
   [/<script\b/i, "contains a <script> tag"],
-  [/\son[a-z]+\s*=/i, "contains an inline event handler (on*=)"],
+  // Anchored inside a start tag on purpose: a bare /\son[a-z]+=/ also matches ordinary
+  // prose like "oncogene = a mutated gene" or "onset = the age symptoms begin", which
+  // is exactly the vocabulary a biology or psychology page is made of.
+  [/<[^>]*\son[a-z]+\s*=/i, "contains an inline event handler (on*=)"],
   [/<iframe\b/i, "contains an <iframe> (only allowlisted LTI domains survive Canvas sanitization)"],
+  [/<style\b/i, "contains a <style> block (Canvas strips it at render)"],
+  [/<(form|input)\b/i, "contains a <form>/<input> element (Canvas strips it at render)"],
+  // Whitespace-tolerant: browsers parse "jav\tascript:" as the javascript scheme, so a
+  // naive /javascript:/ check is trivially bypassed.
+  [
+    /\b(?:href|src|action|formaction)\s*=\s*["']?\s*j\s*a\s*v\s*a\s*s\s*c\s*r\s*i\s*p\s*t\s*:/i,
+    "contains a javascript: URI (executable content in a page students load)",
+  ],
+  [/\b(?:href|src|action|formaction)\s*=\s*["']?\s*v\s*b\s*s\s*c\s*r\s*i\s*p\s*t\s*:/i, "contains a vbscript: URI"],
 ];
 
 export function validate(envelope) {
@@ -95,6 +115,7 @@ function validateNewQuiz(envelope, err) {
   const quiz = envelope.canvas.quiz;
   if (!quiz || !isNonEmptyString(quiz.title)) err("canvas.quiz.title", "must be a non-empty string");
   checkUnpublished(quiz, "canvas.quiz", err);
+  checkDates(quiz, "canvas.quiz", err);
   if (isNonEmptyString(quiz?.instructions)) checkHtml(quiz.instructions, "canvas.quiz.instructions", err);
 
   const items = envelope.canvas.items;
@@ -194,6 +215,19 @@ function validateQuizEntry(entry, path, err) {
     if (slug === "choice") {
       if (choices.length < 3) err(`${path}.interaction_data.choices`, "choice items need >=3 options (one correct, >=2 distractors)");
       if (!ids.has(value)) err(`${path}.scoring_data.value`, "must equal the id of exactly one choice (the correct answer)");
+      // Naming the misconception behind each distractor is the cheapest, highest-leverage
+      // thing this product does. Entry-level feedback can't do it — a student who picked
+      // option C needs to know why C is tempting and wrong, not a generic "incorrect".
+      const perChoice = entry.answer_feedback;
+      if (typeof perChoice !== "object" || perChoice === null || Array.isArray(perChoice)) {
+        err(`${path}.answer_feedback`, "choice items need answer_feedback keyed by choice id — one line per option naming why it's right or which misconception it reflects");
+      } else {
+        for (const id of ids) {
+          if (!isNonEmptyString(perChoice[id])) {
+            err(`${path}.answer_feedback["${id}"]`, "missing feedback for this option");
+          }
+        }
+      }
     } else {
       if (!Array.isArray(value) || value.length === 0) err(`${path}.scoring_data.value`, "must be a non-empty array of correct choice ids");
       else value.forEach((id) => { if (!ids.has(id)) err(`${path}.scoring_data.value`, `"${id}" is not a choice id`); });
@@ -235,6 +269,22 @@ function validateQuizEntry(entry, path, err) {
   if (typeof feedback !== "object" || feedback === null ||
       !(isNonEmptyString(feedback.correct) || isNonEmptyString(feedback.neutral))) {
     err(`${path}.feedback`, "must include correct (and ideally incorrect) feedback — feedback doubles the learning effect");
+  } else {
+    // Feedback is HTML rendered to students, same as the stem — it needs the same scan.
+    for (const key of ["correct", "incorrect", "neutral"]) {
+      if (isNonEmptyString(feedback[key])) checkHtml(feedback[key], `${path}.feedback.${key}`, err);
+    }
+  }
+
+  const answerFeedback = entry.answer_feedback;
+  if (answerFeedback !== undefined) {
+    if (typeof answerFeedback !== "object" || answerFeedback === null || Array.isArray(answerFeedback)) {
+      err(`${path}.answer_feedback`, "must be an object keyed by choice id");
+    } else {
+      Object.entries(answerFeedback).forEach(([key, value]) => {
+        if (isNonEmptyString(value)) checkHtml(value, `${path}.answer_feedback["${key}"]`, err);
+      });
+    }
   }
 }
 
@@ -271,9 +321,7 @@ function validateAssignment(envelope, err) {
   if (assignment.grading_type !== undefined && !GRADING_TYPES.includes(assignment.grading_type)) {
     err("canvas.assignment.grading_type", `must be one of ${GRADING_TYPES.join(", ")}`);
   }
-  if (assignment.due_at !== undefined && Number.isNaN(Date.parse(assignment.due_at))) {
-    err("canvas.assignment.due_at", "must be an ISO 8601 datetime");
-  }
+  checkDates(assignment, "canvas.assignment", err);
   checkUnpublished(assignment, "canvas.assignment", err);
 
   const rubric = envelope.canvas.rubric;
@@ -312,11 +360,26 @@ function validateAssignment(envelope, err) {
     });
   });
 
-  // Rubric criteria trace to objectives too — alignment entries may name criterion keys.
+  // Rubric criteria trace to objectives on the same terms quiz items do: one criterion,
+  // one objective, and no criterion left dangling.
+  const seenKeys = new Set();
   envelope.alignment.forEach((entry, index) => {
-    if (entry?.criterion_key !== undefined && !(entry.criterion_key in criteria)) {
-      err(`alignment[${index}]`, `criterion_key "${entry.criterion_key}" is not in canvas.rubric.criteria`);
+    const key = entry?.criterion_key;
+    if (key === undefined) return;
+    if (!(key in criteria)) {
+      err(`alignment[${index}]`, `criterion_key "${key}" is not in canvas.rubric.criteria`);
+      return;
     }
+    if (seenKeys.has(key)) {
+      err(`alignment[${index}]`, `criterion "${key}" is aligned more than once — one criterion, one objective`);
+    }
+    seenKeys.add(key);
+    if (!isNonEmptyString(entry?.bloom_verb)) {
+      err(`alignment[${index}]`, "missing bloom_verb (the objective verb this criterion matches)");
+    }
+  });
+  Object.keys(criteria).forEach((key) => {
+    if (!seenKeys.has(key)) err(`canvas.rubric.criteria["${key}"]`, "has no aligned objective (orphan criterion)");
   });
 }
 
@@ -357,6 +420,30 @@ function validatePages(envelope, err) {
 function checkUnpublished(payload, path, err) {
   if (payload?.published === true) {
     err(`${path}.published`, "must not be true — the professor publishes after review, never this tool");
+  }
+}
+
+// Canvas enforces unlock_at <= due_at <= lock_at and rejects the POST otherwise —
+// a window that closes before the work is due locks students out of their own assignment.
+function checkDates(payload, path, err) {
+  const parsed = {};
+  for (const field of ["due_at", "unlock_at", "lock_at"]) {
+    const value = payload?.[field];
+    if (value === undefined || value === null) continue;
+    if (typeof value !== "string" || !ISO_8601.test(value)) {
+      err(`${path}.${field}`, "must be an ISO 8601 datetime (e.g. 2026-09-15T23:59:00Z)");
+      continue;
+    }
+    parsed[field] = Date.parse(value);
+  }
+  if (parsed.due_at !== undefined && parsed.lock_at !== undefined && parsed.lock_at < parsed.due_at) {
+    err(`${path}.lock_at`, "is before due_at — students would be locked out before the work is due");
+  }
+  if (parsed.due_at !== undefined && parsed.unlock_at !== undefined && parsed.unlock_at > parsed.due_at) {
+    err(`${path}.unlock_at`, "is after due_at — the work would be due before students can open it");
+  }
+  if (parsed.unlock_at !== undefined && parsed.lock_at !== undefined && parsed.lock_at < parsed.unlock_at) {
+    err(`${path}.lock_at`, "is before unlock_at — the availability window never opens");
   }
 }
 
