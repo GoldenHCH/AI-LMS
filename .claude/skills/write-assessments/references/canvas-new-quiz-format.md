@@ -16,6 +16,9 @@ Verified against Instructure docs (full reference with sources: `~/Research/canv
     "title": "Week 3 Quiz: The Light Reactions",
     "instructions": "<p>Answer every question. You may retake this once.</p>",
     "points_possible": 6,
+    "due_at": "2026-09-15T23:59:00Z",
+    "unlock_at": "2026-09-08T00:00:00Z",
+    "lock_at": "2026-09-22T23:59:00Z",
     "quiz_settings": {
       "shuffle_answers": true,
       "shuffle_questions": false,
@@ -27,7 +30,9 @@ Verified against Instructure docs (full reference with sources: `~/Research/canv
 }
 ```
 
-`points_possible` should equal the sum of item points. Never set `published: true`.
+`points_possible` must equal the sum of item points — the validator checks it, because a mismatch grades against the wrong denominator silently. Never set `published: true`.
+
+The three date fields are optional; include them only when the professor gives dates. They're ISO 8601, and must run `unlock_at` ≤ `due_at` ≤ `lock_at` — Canvas rejects any other order, and a window that closes before the due date locks students out of their own quiz.
 
 ## Item envelope (every question type)
 
@@ -51,7 +56,7 @@ Verified against Instructure docs (full reference with sources: `~/Research/canv
 }
 ```
 
-`position` starts at 1 and must be contiguous. `feedback` and `answer_feedback` are where the pedagogy lives — feedback roughly doubles the learning effect of a quiz, so never ship an item without it. For choice items the validator requires `answer_feedback` for **every** option, not just the correct one: a student who picked option C learns nothing from "incorrect", but learns the actual concept from "C confuses NADH with NADPH — one phosphate apart, different pathway."
+`position` starts at 1 and must be contiguous. `feedback` applies to the item; `answer_feedback` is keyed by choice id, and the validator requires it for **every** choice on `choice` and `multi-answer` items — see the pedagogy rules in SKILL.md for why. (Instructure documents `answer_feedback` for `choice`; its support on other types isn't confirmed, so matching/ordering items carry item-level `feedback` only.)
 
 ## Per-type shapes
 

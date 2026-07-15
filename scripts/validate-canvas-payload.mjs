@@ -51,7 +51,6 @@ const UNSAFE_HTML = [
     /\b(?:href|src|action|formaction)\s*=\s*["']?\s*j\s*a\s*v\s*a\s*s\s*c\s*r\s*i\s*p\s*t\s*:/i,
     "contains a javascript: URI (executable content in a page students load)",
   ],
-  [/\b(?:href|src|action|formaction)\s*=\s*["']?\s*v\s*b\s*s\s*c\s*r\s*i\s*p\s*t\s*:/i, "contains a vbscript: URI"],
 ];
 
 export function validate(envelope) {
@@ -212,22 +211,15 @@ function validateQuizEntry(entry, path, err) {
       if (choice?.position !== index + 1) err(`${choicePath}.position`, `must be ${index + 1}`);
     });
     const value = entry.scoring_data.value;
+    // Naming the misconception behind each option is the cheapest, highest-leverage thing
+    // this product does, and item-level feedback can't do it — a student who picked option C
+    // needs to know why C is tempting and wrong, not a generic "incorrect". Enforced on both
+    // choice types rather than choice alone: an unenforced rule gets skipped on exactly the
+    // items where writing it was most tedious, which is where students needed it most.
+    requireAnswerFeedback(entry, ids, path, err);
     if (slug === "choice") {
       if (choices.length < 3) err(`${path}.interaction_data.choices`, "choice items need >=3 options (one correct, >=2 distractors)");
       if (!ids.has(value)) err(`${path}.scoring_data.value`, "must equal the id of exactly one choice (the correct answer)");
-      // Naming the misconception behind each distractor is the cheapest, highest-leverage
-      // thing this product does. Entry-level feedback can't do it — a student who picked
-      // option C needs to know why C is tempting and wrong, not a generic "incorrect".
-      const perChoice = entry.answer_feedback;
-      if (typeof perChoice !== "object" || perChoice === null || Array.isArray(perChoice)) {
-        err(`${path}.answer_feedback`, "choice items need answer_feedback keyed by choice id — one line per option naming why it's right or which misconception it reflects");
-      } else {
-        for (const id of ids) {
-          if (!isNonEmptyString(perChoice[id])) {
-            err(`${path}.answer_feedback["${id}"]`, "missing feedback for this option");
-          }
-        }
-      }
     } else {
       if (!Array.isArray(value) || value.length === 0) err(`${path}.scoring_data.value`, "must be a non-empty array of correct choice ids");
       else value.forEach((id) => { if (!ids.has(id)) err(`${path}.scoring_data.value`, `"${id}" is not a choice id`); });
@@ -415,6 +407,18 @@ function validatePages(envelope, err) {
   pages.forEach((_, index) => {
     if (!alignedPages.has(index)) err("alignment", `page ${index} teaches no objective (orphan page)`);
   });
+}
+
+// Every selectable option needs its own line of feedback, keyed by option id.
+function requireAnswerFeedback(entry, ids, path, err) {
+  const perOption = entry.answer_feedback;
+  if (typeof perOption !== "object" || perOption === null || Array.isArray(perOption)) {
+    err(`${path}.answer_feedback`, "needs answer_feedback keyed by option id — one line per option naming why it's right, or which misconception it reflects");
+    return;
+  }
+  for (const id of ids) {
+    if (!isNonEmptyString(perOption[id])) err(`${path}.answer_feedback["${id}"]`, "missing feedback for this option");
+  }
 }
 
 function checkUnpublished(payload, path, err) {

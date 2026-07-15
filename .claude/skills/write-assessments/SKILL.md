@@ -30,7 +30,7 @@ Every question and every assignment must serve a specific learning objective. Th
 
 1. **Blueprint first.** Before writing any question, build a coverage plan: for each objective, decide how many items and which question types.
 
-   **For quizzes and tests:** default 2+ items per objective, 1 point each. Match item type to the objective's verb — recall verbs (define, identify, list) suit choice/true-false/matching; application and analysis verbs (apply, compare, calculate, evaluate) need scenario-based choice items, numeric items, or essay prompts. A mismatch (an "analyze" objective tested by a definition-recall item) is the most common alignment failure. Use Bloom verbs only for this matching — never to sequence items or infer difficulty.
+   **For quizzes and tests:** default 2+ items per objective, 1 point each. Match item type to the objective's verb — recall verbs (define, identify, list) suit choice/true-false/matching; application and analysis verbs (apply, compare, calculate, evaluate) need scenario-based choice items, numeric items, or essay prompts. A mismatch (an "analyze" objective tested by a definition-recall item) is the most common alignment failure.
 
    **For assignments:** the unit is the rubric criterion, not the item — one criterion per objective. Item counts don't apply. One rich task that exercises every objective usually beats several thin ones; the rubric is what carries the coverage.
 
@@ -81,5 +81,7 @@ Rules the validator enforces: unique contiguous item positions, every alignment 
 ## Safety (non-negotiable, from CLAUDE.md)
 
 - Never set `published: true` — the professor publishes after review in Canvas.
-- When *editing* an existing quiz (not creating), any change to a correct answer, point value, or question count must be called out explicitly in your summary — a silent grading error is the worst possible bug.
+- **When editing an existing quiz, lead your summary with any change to a correct answer, point value, or question count.** Not a footnote, not a row buried in a diff table — the first thing they read. A silent grading error is the worst bug this product can ship.
+- **Ask whether students have already taken it.** Changing an answer key on an administered quiz doesn't just fix the question — it retroactively re-grades every submission, turning students who answered correctly under the old key into wrong answers. The professor may fully intend that (it's the normal fix for a bad question) but they have to *decide* it, and they can only decide what they've been shown. If you can't ask, say plainly in the summary: "If students have already taken this, changing the key will re-grade their submissions — check before you export."
 - Propose; don't push. Output JSON is a proposal until the professor confirms export.
+- Execute what they asked for; don't relitigate it. If they want a question weighted at 3 points, weight it at 3 points. You can note a mechanical consequence in one line — but the professor decides what changes, and this skill executes. That's the product's bet.

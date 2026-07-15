@@ -467,6 +467,15 @@ test("rejects a choice item with no answer_feedback", () => {
   rejects(bad, "answer_feedback");
 });
 
+test("rejects a multi-answer item with no answer_feedback, not just choice items", () => {
+  // The gap this closes: an eval run wrote per-option feedback on the choice items and
+  // skipped it on multi-answer, and said so — it followed what the validator enforced
+  // over what the prose asked for. The enforced floor is the real spec.
+  const bad = clone(QUIZ);
+  delete bad.canvas.items[2].item.entry.answer_feedback;
+  rejects(bad, "answer_feedback");
+});
+
 test("rejects a choice item missing feedback for one distractor", () => {
   // The likeliest real failure: three options explained, the fourth quietly skipped.
   const bad = clone(QUIZ);
