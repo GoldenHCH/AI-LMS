@@ -1,0 +1,138 @@
+{
+  "course": {
+    "id": "101",
+    "name": "Biology 101",
+    "course_code": "BIO-101",
+    "workflow_state": "available"
+  },
+  "modules": [
+    {
+      "module": {
+        "id": "201",
+        "name": "Week 1 — Cells",
+        "position": 1,
+        "published": true
+      },
+      "items": [
+        {
+          "module_item": {
+            "id": "301",
+            "position": 1,
+            "type": "Page",
+            "title": "Cell structure",
+            "page_url": "cell-structure"
+          },
+          "content": {
+            "kind": "page",
+            "page": {
+              "page_id": "401",
+              "url": "cell-structure",
+              "title": "Cell structure",
+              "body": "<section class=\"lesson\">\n  <h2 data-topic=\"cell\">Cell&nbsp;Structure</h2>\n  <p>Keep  two spaces &amp; entities.</p>\n</section>",
+              "published": true,
+              "front_page": false,
+              "updated_at": "2026-06-01T12:00:00Z"
+            }
+          }
+        },
+        {
+          "module_item": {
+            "id": "302",
+            "position": 2,
+            "type": "Quiz",
+            "title": "Cell check",
+            "content_id": "501"
+          },
+          "content": {
+            "kind": "quiz",
+            "engine": "classic",
+            "quiz": {
+              "id": "501",
+              "title": "Cell check",
+              "description": "<p><strong>Check</strong> your understanding.</p>",
+              "points_possible": 2,
+              "question_count": 1,
+              "published": false,
+              "quiz_type": "practice_quiz"
+            },
+            "questions": [
+              {
+                "id": "601",
+                "quiz_id": "501",
+                "position": 1,
+                "question_name": "Organelle",
+                "question_type": "multiple_choice_question",
+                "question_text": "<p>Which organelle contains most <em>DNA</em>?</p>",
+                "points_possible": 2,
+                "correct_comments_html": "<p>Correct.</p>",
+                "answers": [
+                  {
+                    "id": "701",
+                    "html": "<p>Nucleus</p>",
+                    "weight": 100,
+                    "comments_html": "<p>Yes.</p>"
+                  },
+                  {
+                    "id": "702",
+                    "html": "<p>Golgi apparatus</p>",
+                    "weight": 0,
+                    "comments_html": "<p>Review the reading.</p>"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "module_item": {
+            "id": "303",
+            "position": 3,
+            "type": "File",
+            "title": "Cell diagram.pdf",
+            "content_id": "801"
+          },
+          "content": {
+            "kind": "file",
+            "file": {
+              "id": "801",
+              "display_name": "Cell diagram.pdf",
+              "content-type": "application/pdf",
+              "url": "https://canvas.example.edu/files/801/download",
+              "size": 2048
+            }
+          }
+        },
+        {
+          "module_item": {
+            "id": "304",
+            "position": 4,
+            "type": "Discussion",
+            "title": "Introduce yourself",
+            "content_id": "901",
+            "indent": 1
+          },
+          "content": {
+            "kind": "opaque",
+            "payload": {
+              "id": "304",
+              "position": 4,
+              "type": "Discussion",
+              "title": "Introduce yourself",
+              "content_id": "901",
+              "indent": 1
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "files": [
+    {
+      "id": "801",
+      "display_name": "Cell diagram.pdf",
+      "content-type": "application/pdf",
+      "url": "https://canvas.example.edu/files/801/download",
+      "size": 2048
+    }
+  ]
+}

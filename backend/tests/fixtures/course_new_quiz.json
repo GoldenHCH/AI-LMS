@@ -1,0 +1,145 @@
+{
+  "course": {
+    "id": "102",
+    "name": "World History",
+    "course_code": "HIST-201",
+    "workflow_state": "unpublished"
+  },
+  "modules": [
+    {
+      "module": {
+        "id": "202",
+        "name": "Primary Sources",
+        "position": 1,
+        "published": false
+      },
+      "items": [
+        {
+          "module_item": {
+            "id": "311",
+            "position": 1,
+            "type": "Page",
+            "title": "Reading guide",
+            "page_url": "reading-guide"
+          },
+          "content": {
+            "kind": "page",
+            "page": {
+              "page_id": "411",
+              "url": "reading-guide",
+              "title": "Reading guide",
+              "body": "<div dir=\"ltr\"><p lang=\"es\">¿Qué observas?</p>\r\n<p>Do not normalize CRLF.</p></div>",
+              "published": false,
+              "front_page": true
+            }
+          }
+        },
+        {
+          "module_item": {
+            "id": "312",
+            "position": 2,
+            "type": "Quiz",
+            "title": "Source analysis",
+            "content_id": "511"
+          },
+          "content": {
+            "kind": "quiz",
+            "engine": "new",
+            "quiz": {
+              "id": "511",
+              "title": "Source analysis",
+              "instructions": "<p>Analyze the source before answering.</p>",
+              "points_possible": 5,
+              "published": false,
+              "quiz_settings": {
+                "shuffle_questions": false
+              }
+            },
+            "questions": [
+              {
+                "id": "611",
+                "position": 1,
+                "points_possible": 5,
+                "entry_type": "Item",
+                "entry_editable": true,
+                "status": "mutable",
+                "entry": {
+                  "id": "item-611",
+                  "title": "Authorship",
+                  "item_body": "<p>Who authored this source?</p>",
+                  "interaction_type_slug": "choice",
+                  "interaction_data": {
+                    "choices": [
+                      {
+                        "id": "choice-a",
+                        "position": 1,
+                        "itemBody": "<p>Author A</p>"
+                      },
+                      {
+                        "id": "choice-b",
+                        "position": 2,
+                        "itemBody": "<p>Author B</p>"
+                      }
+                    ]
+                  },
+                  "properties": {
+                    "shuffleRules": {
+                      "choices": {
+                        "shuffled": false,
+                        "toLock": []
+                      }
+                    }
+                  },
+                  "scoring_data": {
+                    "value": "choice-b"
+                  },
+                  "scoring_algorithm": "Equivalence",
+                  "answer_feedback": {
+                    "choice-a": "<p>Look at the signature.</p>"
+                  }
+                }
+              },
+              {
+                "id": "612",
+                "position": 2,
+                "points_possible": 0,
+                "entry_type": "Stimulus",
+                "entry_editable": false,
+                "status": "immutable",
+                "entry": {
+                  "id": "stimulus-612",
+                  "title": "Letter excerpt",
+                  "body": "<blockquote>Dear colleague…</blockquote>",
+                  "instructions": "Read closely.",
+                  "orientation": "left"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "module_item": {
+            "id": "313",
+            "position": 3,
+            "type": "ExternalUrl",
+            "title": "Archive",
+            "external_url": "https://archive.example.org/source",
+            "new_tab": true
+          },
+          "content": {
+            "kind": "opaque",
+            "payload": {
+              "id": "313",
+              "position": 3,
+              "type": "ExternalUrl",
+              "title": "Archive",
+              "external_url": "https://archive.example.org/source",
+              "new_tab": true
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "files": []
+}

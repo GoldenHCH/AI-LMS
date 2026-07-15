@@ -5,7 +5,13 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
-from ._serialization import CanvasId, JsonObject, json_copy, optional_json_object
+from ._serialization import (
+    CanvasId,
+    JsonObject,
+    json_copy,
+    links_from_dict,
+    optional_json_object,
+)
 from .file_ref import FileRef
 from .page import Page
 from .quiz import Quiz
@@ -22,6 +28,7 @@ class ModuleItem:
     quiz: Quiz | None = None
     file: FileRef | None = None
     opaque: JsonObject | None = None
+    links: list[JsonObject] = field(default_factory=list)
     raw_payload: JsonObject = field(default_factory=dict, repr=False)
 
     def __post_init__(self) -> None:
@@ -43,6 +50,7 @@ class ModuleItem:
             "canvas_module_item_id": self.canvas_module_item_id,
             "position": self.position,
             "kind": self.kind,
+            "links": json_copy(self.links),
             "raw_payload": json_copy(self.raw_payload),
         }
         if self.page is not None:
@@ -65,7 +73,10 @@ class ModuleItem:
             page=Page.from_dict(data["page"]) if kind == "page" else None,
             quiz=Quiz.from_dict(data["quiz"]) if kind == "quiz" else None,
             file=FileRef.from_dict(data["file"]) if kind == "file" else None,
-            opaque=optional_json_object(data.get("opaque")) if kind == "opaque" else None,
+            opaque=(
+                optional_json_object(data.get("opaque")) if kind == "opaque" else None
+            ),
+            links=links_from_dict(data.get("links")),
             raw_payload=optional_json_object(data.get("raw_payload")),
         )
 

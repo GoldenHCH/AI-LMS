@@ -11,13 +11,17 @@ Broken out from PRD P0-1…P0-7. Flow: **import → agent edit with reviewable d
 ## #1 — Spike: Canvas API write-back fidelity (quizzes)
 **Labels:** `spike` `canvas-integration` `phase-1` · **Size:** S · **Blocks:** #2, #9, #10
 
+**Status:** OPEN — the July 14, 2026 BYU Classic probe preserved unchanged/restored payloads but
+failed stem/option write fidelity and Canvas UI verification. New Quizzes remain untested and
+read-only. See `backend/spikes/quiz_writeback/FINDINGS.md`.
+
 **Why:** The whole export path depends on cleanly reading *and writing* quiz questions, correct answers, and points. New Quizzes vs. Classic Quizzes have different APIs and limits. De-risk before building.
 
 **Acceptance criteria**
-- [ ] Confirm which quiz type(s) we support in MVP (Classic, New, or both) and document API endpoints for read + write.
-- [ ] Prove round-trip on a test course: read a quiz → write it back unchanged → verify no data loss.
+- [x] Confirm which quiz type(s) we support in MVP (Classic, New, or both) and document API endpoints for read + write.
+- [x] Prove round-trip on a test course: read a quiz → write it back unchanged → verify no data loss.
 - [ ] Prove we can programmatically edit a question stem, an option, a correct answer, and point value, and see it in Canvas.
-- [ ] Document any fields we *cannot* reliably write (constraints feed into #10 guardrails).
+- [x] Document any fields we *cannot* reliably write (constraints feed into #10 guardrails).
 - [ ] Written findings + go/no-go on scope in the issue thread.
 
 ---
