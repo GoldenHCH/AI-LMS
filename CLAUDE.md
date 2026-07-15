@@ -80,6 +80,16 @@ _Chosen incrementally — update as decisions land._
 **Commands**
 - `npm install` — install dependencies
 - `npm run check:supabase` — verify the Supabase connection (URL + key reachable)
+- `npm test` — run validator tests (Canvas payload validation)
+
+## Authoring skills
+
+Two Claude skills generate new course artifacts as Canvas-API-ready JSON, built around learning objectives (every artifact must trace to one):
+
+- `.claude/skills/write-assessments/` — quizzes/tests (New Quizzes items) and assignments, from objectives + topics/terms
+- `.claude/skills/write-content/` — article-style content pages (textbook replacement), from objectives
+
+Both emit a JSON envelope (`artifact_type`, `objectives`, `canvas` payloads, `alignment` map) and must pass `node scripts/validate-canvas-payload.mjs <file>` before anything is shown as final. The validator enforces upload-shape correctness plus the alignment rules (no orphan objectives/items, `published` never true). Worked examples live in each skill's `references/` and double as test fixtures for `npm test`.
 
 **Repo layout (so far)**
 - `lib/supabase/client.ts` — configured Supabase client

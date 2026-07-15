@@ -1,0 +1,51 @@
+{
+  "artifact_type": "assignment",
+  "title": "Photosynthesis Lab Report",
+  "objectives": [
+    { "id": "LO1", "text": "Describe how the light-dependent reactions convert light energy into ATP and NADPH." },
+    { "id": "LO3", "text": "Interpret experimental data on the rate of photosynthesis under varying light conditions." }
+  ],
+  "canvas": {
+    "assignment": {
+      "name": "Photosynthesis Lab Report",
+      "description": "<h2>What you're doing</h2><p>You measured oxygen production in <em>Elodea</em> at four light intensities. Write a lab report interpreting your data.</p><h2>Objectives this assesses</h2><ul><li>Describe how the light-dependent reactions convert light energy into ATP and NADPH.</li><li>Interpret experimental data on the rate of photosynthesis under varying light conditions.</li></ul><h2>What to include</h2><ol><li><strong>Mechanism (about 400 words).</strong> Trace energy from photon capture through ATP and NADPH production. Name the products and where each step happens.</li><li><strong>Data interpretation (about 400 words).</strong> Describe the relationship between light intensity and oxygen production in your data. Identify where the curve levels off and explain what limits the rate there.</li><li><strong>A figure.</strong> One graph of your data, with axes labeled and units given.</li></ol><h2>Format</h2><p>PDF or Word, roughly 800-1000 words plus the figure. Due at the start of Week 4.</p>",
+      "points_possible": 20,
+      "submission_types": ["online_upload"],
+      "allowed_extensions": ["pdf", "docx"],
+      "grading_type": "points",
+      "published": false,
+      "peer_reviews": false,
+      "omit_from_final_grade": false
+    },
+    "rubric": {
+      "title": "Photosynthesis Lab Report Rubric",
+      "free_form_criterion_comments": false,
+      "criteria": {
+        "0": {
+          "description": "Describes the light-dependent reactions",
+          "long_description": "Traces energy from photon capture through to ATP and NADPH, naming where each step occurs.",
+          "points": 10,
+          "ratings": [
+            { "description": "Traces all four steps (photon capture, electron transport, proton gradient, NADP+ reduction) and names both products with their locations", "points": 10 },
+            { "description": "Traces the sequence but omits a step, misnames a product, or places a step in the wrong compartment", "points": 6 },
+            { "description": "Describes photosynthesis in general terms without tracing the light-dependent reactions specifically", "points": 2 }
+          ]
+        },
+        "1": {
+          "description": "Interprets the light-intensity data",
+          "long_description": "Reads the relationship in the student's own data and explains the limiting factor at saturation.",
+          "points": 10,
+          "ratings": [
+            { "description": "States the relationship, identifies the saturation point from the data, and names a specific limiting factor with justification", "points": 10 },
+            { "description": "States the relationship and notes the curve levels off, but attributes it to no factor or an unjustified one", "points": 6 },
+            { "description": "Restates data points without interpreting the relationship", "points": 2 }
+          ]
+        }
+      }
+    }
+  },
+  "alignment": [
+    { "criterion_key": "0", "objective_id": "LO1", "bloom_verb": "describe" },
+    { "criterion_key": "1", "objective_id": "LO3", "bloom_verb": "interpret" }
+  ]
+}
