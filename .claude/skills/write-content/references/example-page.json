@@ -1,0 +1,24 @@
+{
+  "artifact_type": "page",
+  "title": "The Light-Dependent Reactions of Photosynthesis",
+  "objectives": [
+    { "id": "LO1", "text": "Describe how the light-dependent reactions convert light energy into ATP and NADPH." }
+  ],
+  "canvas": {
+    "pages": [
+      {
+        "wiki_page": {
+          "title": "The Light-Dependent Reactions of Photosynthesis",
+          "body": "<h2>Why this page matters</h2><table><tbody><tr><th scope=\"row\">You'll be able to</th><td>Describe how the light-dependent reactions convert light energy into ATP and NADPH — the chemical fuel the plant later uses to build sugar.</td></tr><tr><th scope=\"row\">Cover first</th><td><a href=\"/courses/1/pages/inside-the-chloroplast\">Inside the Chloroplast</a> — especially the thylakoid membrane.</td></tr><tr><th scope=\"row\">This unlocks</th><td><a href=\"/courses/1/pages/the-calvin-cycle\">The Calvin Cycle</a>, which spends everything the light reactions make.</td></tr></tbody></table><h2>A quick hook</h2><p>A leaf sitting in sunlight is, chemically speaking, catching photons and turning them into a battery. How does a plant store something as fleeting as light? <em>Try to answer before reading on:</em> when a photon hits chlorophyll, where does its energy actually go?</p><h2>Equip: how the light reactions work</h2><p>The reactions happen in the thylakoid membrane in four connected steps.</p><ol><li>Light excites electrons in Photosystem II.</li><li>Those electrons travel down an electron transport chain, pumping protons into the thylakoid space.</li><li>The proton gradient drives ATP synthase to make ATP.</li><li>Photosystem I re-energizes the electrons to reduce NADP+ into NADPH.</li></ol><p><strong>Worked example.</strong> Follow one electron: it starts in a chlorophyll molecule in Photosystem II, gets knocked loose by a photon, rides the transport chain (releasing energy that pumps protons), and is finally handed to NADP+ at Photosystem I. The water molecule split at the start is what replaces that lost electron — which is also where the oxygen you breathe comes from.</p><h2>Rethink: check yourself</h2><p>Where does the oxygen released by photosynthesis come from?</p><details><summary>Show answer</summary><p>From splitting water (H<sub>2</sub>O) at Photosystem II to replace the electrons chlorophyll loses. It is a by-product, not something the plant needs.</p></details><h2>Evaluate</h2><p>When you feel ready, take the quiz <em>Week 3 Quiz: The Light Reactions</em> — every question maps back to this objective.</p><h2>Tailor</h2><p>If the electron transport chain felt shaky, revisit <em>Cellular Respiration: The Electron Transport Chain</em> — the mechanism is the same idea run in reverse. Ready for more? Read ahead to how ATP and NADPH power the Calvin cycle.</p><h2>Where this fits</h2><ul><li><strong>Prerequisite of:</strong> The Calvin Cycle</li><li><strong>Contrasts with:</strong> The Electron Transport Chain in respiration</li></ul>",
+          "published": false,
+          "front_page": false,
+          "editing_roles": "teachers",
+          "notify_of_update": false
+        }
+      }
+    ]
+  },
+  "alignment": [
+    { "page_index": 0, "objective_id": "LO1", "section": "Equip: how the light reactions work" }
+  ]
+}

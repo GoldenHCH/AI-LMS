@@ -13,6 +13,7 @@ dependencies = [
 ]
 
 [tool.setuptools.packages.find]
+where = ["backend"]
 include = ["canvas_import*"]
 
 [tool.pytest.ini_options]
@@ -20,4 +21,10 @@ addopts = "--strict-markers"
 markers = [
   "live: requires explicit Canvas test-tenant credentials and course IDs",
 ]
-testpaths = ["tests"]
+# Both settings point at backend/, where the Python package and its tests live.
+# testpaths was "tests", which now resolves to the root tests/ directory holding the
+# Node validator tests — pytest found no test_*.py there, collected nothing, and exited
+# 0, so the round-trip suite silently did not run. pythonpath puts backend/ on sys.path
+# so `import canvas_import` resolves when pytest runs from the repo root.
+testpaths = ["backend/tests"]
+pythonpath = ["backend"]

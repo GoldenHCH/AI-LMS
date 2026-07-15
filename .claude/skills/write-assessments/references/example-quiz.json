@@ -1,0 +1,142 @@
+{
+  "artifact_type": "new_quiz",
+  "title": "Week 3 Quiz: The Light Reactions",
+  "objectives": [
+    { "id": "LO1", "text": "Describe how the light-dependent reactions convert light energy into ATP and NADPH." },
+    { "id": "LO2", "text": "Explain why photosynthesis releases oxygen." }
+  ],
+  "canvas": {
+    "quiz": {
+      "title": "Week 3 Quiz: The Light Reactions",
+      "instructions": "<p>Four questions on the light-dependent reactions. Every question links back to this week's reading.</p>",
+      "points_possible": 5,
+      "quiz_settings": {
+        "shuffle_answers": true,
+        "shuffle_questions": false,
+        "has_time_limit": false,
+        "calculator_type": "none"
+      }
+    },
+    "items": [
+      {
+        "item": {
+          "entry_type": "Item",
+          "points_possible": 1,
+          "position": 1,
+          "entry": {
+            "title": "Products of the light reactions",
+            "item_body": "<p>Which pair of molecules is produced by the light-dependent reactions and then used by the Calvin cycle?</p>",
+            "interaction_type_slug": "choice",
+            "interaction_data": {
+              "choices": [
+                { "id": "3f1b8c22-9f1a-4d3e-8b5a-1c2d3e4f5a6b", "position": 1, "itemBody": "<p>ATP and NADPH</p>" },
+                { "id": "7c4e2a91-0b6d-4f8c-a2e1-9d8c7b6a5f4e", "position": 2, "itemBody": "<p>ATP and NADH</p>" },
+                { "id": "b2d9f6e3-5a7c-4e1b-9f3d-2c8a1b0e7d4f", "position": 3, "itemBody": "<p>Glucose and oxygen</p>" },
+                { "id": "e8a3c7d1-4b2f-4a9e-8c6d-5f1e0b3a2c9d", "position": 4, "itemBody": "<p>Carbon dioxide and water</p>" }
+              ]
+            },
+            "scoring_data": { "value": "3f1b8c22-9f1a-4d3e-8b5a-1c2d3e4f5a6b" },
+            "scoring_algorithm": "Equivalence",
+            "feedback": {
+              "correct": "<p>Right. The light reactions bank energy as ATP and reducing power as NADPH; the Calvin cycle spends both to fix carbon.</p>",
+              "incorrect": "<p>Re-read the handoff between the two stages. The light reactions make the fuel; the Calvin cycle makes the sugar.</p>",
+              "neutral": ""
+            },
+            "answer_feedback": {
+              "3f1b8c22-9f1a-4d3e-8b5a-1c2d3e4f5a6b": "<p>Correct — these are the two energy carriers passed to the Calvin cycle.</p>",
+              "7c4e2a91-0b6d-4f8c-a2e1-9d8c7b6a5f4e": "<p>NADH is respiration's carrier. Photosynthesis uses NADPH — one phosphate different, different pathway.</p>",
+              "b2d9f6e3-5a7c-4e1b-9f3d-2c8a1b0e7d4f": "<p>These are outputs of photosynthesis overall, not of the light reactions specifically. Glucose comes later, in the Calvin cycle.</p>",
+              "e8a3c7d1-4b2f-4a9e-8c6d-5f1e0b3a2c9d": "<p>These are inputs, not products.</p>"
+            }
+          }
+        }
+      },
+      {
+        "item": {
+          "entry_type": "Item",
+          "points_possible": 1,
+          "position": 2,
+          "entry": {
+            "title": "Source of released oxygen",
+            "item_body": "<p>The oxygen released during photosynthesis comes from splitting carbon dioxide.</p>",
+            "interaction_type_slug": "true-false",
+            "interaction_data": { "true_choice": "True", "false_choice": "False" },
+            "scoring_data": { "value": false },
+            "scoring_algorithm": "Equivalence",
+            "feedback": {
+              "correct": "<p>Correct. The oxygen comes from splitting water at Photosystem II, replacing electrons chlorophyll lost to light.</p>",
+              "incorrect": "<p>A common mix-up. Carbon dioxide is split in the Calvin cycle, but the oxygen you breathe comes from water.</p>",
+              "neutral": ""
+            }
+          }
+        }
+      },
+      {
+        "item": {
+          "entry_type": "Item",
+          "points_possible": 2,
+          "position": 3,
+          "entry": {
+            "title": "Events at the thylakoid membrane",
+            "item_body": "<p>Select every event that happens at the thylakoid membrane during the light-dependent reactions.</p>",
+            "interaction_type_slug": "multi-answer",
+            "interaction_data": {
+              "choices": [
+                { "id": "a1111111-1111-4111-8111-111111111111", "position": 1, "item_body": "<p>Protons are pumped into the thylakoid space</p>" },
+                { "id": "a2222222-2222-4222-8222-222222222222", "position": 2, "item_body": "<p>Water is split to replace lost electrons</p>" },
+                { "id": "a3333333-3333-4333-8333-333333333333", "position": 3, "item_body": "<p>Carbon dioxide is fixed into a three-carbon sugar</p>" },
+                { "id": "a4444444-4444-4444-8444-444444444444", "position": 4, "item_body": "<p>Glucose is assembled from smaller sugars</p>" }
+              ]
+            },
+            "scoring_data": { "value": ["a1111111-1111-4111-8111-111111111111", "a2222222-2222-4222-8222-222222222222"] },
+            "scoring_algorithm": "AllOrNothing",
+            "feedback": {
+              "correct": "<p>Both correct events happen in the membrane. The other two belong to the Calvin cycle, out in the stroma.</p>",
+              "incorrect": "<p>Sort each event by location: light reactions happen in the thylakoid membrane, the Calvin cycle happens in the stroma.</p>",
+              "neutral": ""
+            },
+            "answer_feedback": {
+              "a1111111-1111-4111-8111-111111111111": "<p>Correct — this is what builds the gradient ATP synthase runs on.</p>",
+              "a2222222-2222-4222-8222-222222222222": "<p>Correct — splitting water replaces the electrons chlorophyll loses, and releases the oxygen.</p>",
+              "a3333333-3333-4333-8333-333333333333": "<p>This is the Calvin cycle, in the stroma. It spends what the light reactions make, but it isn't one of them.</p>",
+              "a4444444-4444-4444-8444-444444444444": "<p>Sugar assembly is downstream of the Calvin cycle entirely — nowhere near the thylakoid membrane.</p>"
+            }
+          }
+        }
+      },
+      {
+        "item": {
+          "entry_type": "Item",
+          "points_possible": 1,
+          "position": 4,
+          "entry": {
+            "title": "Predicting the effect of blocking ATP synthase",
+            "item_body": "<p>A researcher adds a chemical that punctures the thylakoid membrane, letting protons leak freely across it. Explain what happens to ATP production in the light reactions, and why.</p>",
+            "interaction_type_slug": "essay",
+            "interaction_data": {
+              "rce": true,
+              "word_count": true,
+              "spell_check": true,
+              "word_limit_enabled": true,
+              "word_limit_max": "200",
+              "word_limit_min": "0",
+              "file_upload": false,
+              "essay": null
+            },
+            "scoring_data": { "value": "Full credit: student states ATP production falls or stops, AND explains that ATP synthase depends on the proton gradient — leaking protons collapse the gradient, so there is no stored energy to drive the enzyme. Half credit: correct outcome, no mechanism." },
+            "scoring_algorithm": "None",
+            "feedback": {
+              "neutral": "<p>The key move is connecting the proton gradient to ATP synthase: no gradient, no ATP. This is the same mechanism you saw in cellular respiration.</p>"
+            }
+          }
+        }
+      }
+    ]
+  },
+  "alignment": [
+    { "item_position": 1, "objective_id": "LO1", "bloom_verb": "describe" },
+    { "item_position": 2, "objective_id": "LO2", "bloom_verb": "explain" },
+    { "item_position": 3, "objective_id": "LO1", "bloom_verb": "describe" },
+    { "item_position": 4, "objective_id": "LO1", "bloom_verb": "describe" }
+  ]
+}
