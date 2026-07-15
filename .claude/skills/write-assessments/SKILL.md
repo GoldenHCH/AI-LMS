@@ -12,7 +12,8 @@ Generate quiz/test questions and assignments that upload cleanly to Canvas and t
 Every question and every assignment must serve a specific learning objective. This is the product's core bet — alignment is what separates us from generic AI chat.
 
 - If the professor supplies objectives, use them verbatim and assign stable IDs (`LO1`, `LO2`, …).
-- If they supply only topics/terms, draft objectives from the topics first (one line each, observable verb), show them to the professor, and get confirmation before writing items. Don't bury invented objectives inside a finished quiz.
+- If they supply only topics/terms, draft objectives from the topics first (one line each, observable verb). **If you can ask, ask** — confirm the objectives before writing items, because everything downstream inherits their errors.
+- **If you can't ask** (batch run, no reply coming), don't stall: draft the objectives, write the assessment, and open your summary with the drafted objectives flagged as *unconfirmed — please check these first*, above the artifact. The failure mode to avoid isn't proceeding without confirmation; it's letting invented objectives look like the professor's own. Surfacing beats stalling; burying is what's forbidden.
 - No objective may go untested (no orphan objectives), and no item may exist without an objective (no orphan items). The validator enforces this.
 
 ## Inputs
@@ -27,7 +28,15 @@ Every question and every assignment must serve a specific learning objective. Th
 
 ## Workflow
 
-1. **Blueprint first.** Before writing any question, build a coverage plan: for each objective, decide how many items and which question types. Default 2+ items per objective, and at least one application-level item (scenario, calculation, transfer task) per objective — LLM-generated items empirically skew easy, so recognition-only coverage under-tests. Match item type to the objective's verb as a heuristic: recall verbs (define, identify, list) suit choice/true-false/matching; application and analysis verbs (apply, compare, calculate, evaluate) need scenario-based choice items, numeric items, or essay prompts. A mismatch (an "analyze" objective tested by a definition-recall item) is the most common alignment failure. Use Bloom verbs only for this matching — never to sequence items or infer difficulty.
+1. **Blueprint first.** Before writing any question, build a coverage plan: for each objective, decide how many items and which question types.
+
+   **For quizzes and tests:** default 2+ items per objective, 1 point each. Match item type to the objective's verb — recall verbs (define, identify, list) suit choice/true-false/matching; application and analysis verbs (apply, compare, calculate, evaluate) need scenario-based choice items, numeric items, or essay prompts. A mismatch (an "analyze" objective tested by a definition-recall item) is the most common alignment failure. Use Bloom verbs only for this matching — never to sequence items or infer difficulty.
+
+   **For assignments:** the unit is the rubric criterion, not the item — one criterion per objective. Item counts don't apply. One rich task that exercises every objective usually beats several thin ones; the rubric is what carries the coverage.
+
+   **Reach past recognition.** LLM-generated items empirically skew easy, so each objective wants at least one item that makes the student *do* something, not just recognize something. When the objective's own verb is recall-level ("identify the phases"), the verb wins — don't inflate the cognitive demand past what the professor asked for. Instead make the recall non-trivial: give a case the student must read the answer out of, rather than a term to match. Wrapping a definition in flavor text is not application; if the student can still answer by spotting the keyword, nothing was gained.
+
+   **Auto-gradable by default when they say "quiz".** Professors saying "quiz" usually mean something that grades itself on submission. Prefer scenario-based choice items over essays there, even for "explain" verbs — a well-built scenario MC can test explanation. Reserve essay and other hand-graded items for explicit "test"/"exam"/"assignment" requests, or when the professor accepts manual grading. If an objective genuinely can't be assessed without an essay, include it and say why in your summary so they can swap it.
 2. **Write items** following the pedagogy rules below.
 3. **Assemble the output envelope** (schema below). Exact Canvas payload shapes per question type are in `references/canvas-new-quiz-format.md`; assignments in `references/canvas-assignment-format.md`. Follow them exactly — Canvas rejects or silently mangles malformed payloads.
 4. **Validate:** run `node scripts/validate-canvas-payload.mjs <output-file>` from the repo root. Fix every error and re-run until it exits 0. Never hand the professor unvalidated JSON.
@@ -39,9 +48,9 @@ Every question and every assignment must serve a specific learning objective. Th
 
 - **Bloom-verb match** — the item must demand the same cognitive level as its objective's verb. Use the verb match for QA only, never to sequence difficulty.
 - **One item, one objective.** Every item tags exactly one objective — never zero, never several.
-- **Distractors are near-misses from the course's own vocabulary.** Each wrong option is a plausible error — a confusable term or misconception drawn from the module's topics/terms list, never invented from outside the course. All options grammatically parallel, similar length, no "all of the above".
+- **Distractors are near-misses.** Each wrong option is a plausible error — a confusable term or a real misconception. Draw first from the professor's own topics/terms list; when that list is too small to fill an item, reach into the course's wider subject vocabulary (a term from an adjacent week, a commonly confused concept) and note in your summary that you did. What's out of bounds is inventing options no student would ever believe. All options grammatically parallel, similar length, no "all of the above".
 - **Feedback on every item.** Write specific feedback for correct and incorrect responses — why the right answer is right, what misconception each distractor reflects. Feedback roughly doubles the learning effect of retrieval practice.
-- **Stems are self-contained.** A student who mastered the objective should answer from the stem alone, without reading the options first. No negatives in stems unless bolded and essential.
+- **Stems set up the question; they don't answer it.** A student who mastered the objective should be able to answer from the stem without reading the options — but a stem that narrates the answer lets an unprepared student keyword-match their way to it. After writing each item, read the correct option against the stem: if it paraphrases something the stem already said, the item tests reading, not learning. Rewrite so the stem gives the situation and the option supplies the reasoning. No negatives in stems unless bolded and essential.
 - **Assignments get rubrics.** Rubric criteria come from the objective's verb; each criterion names observable behavior at each rating level.
 
 ## Output envelope

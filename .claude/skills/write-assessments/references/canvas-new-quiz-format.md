@@ -150,7 +150,9 @@ Verified against Instructure docs (full reference with sources: `~/Research/canv
 }
 ```
 
-Extra strings in `answers` that appear in no match are distractors — a natural place for near-miss terms. `scoring_algorithm`: `DeepEquals` or `PartialDeep`.
+Extra strings in `answers` that appear in no match are distractors — a natural place for near-miss terms.
+
+`scoring_algorithm`: `DeepEquals` (all pairs right or zero) or `PartialDeep` (credit per correct pair). Prefer **`PartialDeep` for matching items with three or more pairs** — under `DeepEquals` a student who knows four of five pairs scores the same as one who knows none, which tells you nothing and reads as unfair. Reserve `DeepEquals` for two-pair items or when the professor wants all-or-nothing.
 
 ### `numeric`
 
