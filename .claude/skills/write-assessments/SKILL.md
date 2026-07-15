@@ -74,7 +74,9 @@ Write one JSON file per assessment. ALWAYS use this exact envelope:
 }
 ```
 
-For assignments, `artifact_type` is `"assignment"` and `canvas` holds a single `assignment` object (plus optional `rubric`); alignment entries reference rubric criteria instead of item positions.
+For assignments, `artifact_type` is `"assignment"` and `canvas` holds a single `assignment` object (plus optional `rubric`); alignment entries use `criterion_key` instead of `item_position`.
+
+`bloom_verb` is **the objective's verb**, copied from the objective text — not a verb describing the item. It's there so a reviewer can scan the alignment table and see whether the item's actual demand matches what the objective asked for; that comparison only works if the column is always the same side of it.
 
 Rules the validator enforces: unique contiguous item positions, every alignment ID resolves, no orphan objectives or items, every choice item has exactly one correct answer among ≥3 options, `published` is never true, points are consistent.
 
