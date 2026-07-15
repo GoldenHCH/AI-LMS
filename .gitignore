@@ -1,6 +1,8 @@
 .env
 .DS_Store
 node_modules/
+.next/
+*.tsbuildinfo
 .venv/
 __pycache__/
 *.py[cod]
@@ -10,3 +12,5 @@ htmlcov/
 working_copies/
 spikes/quiz_writeback/reports/
 backend/spikes/quiz_writeback/reports/
+supabase/.temp/
+.gstack/

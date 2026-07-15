@@ -26,18 +26,41 @@ read-only. See `backend/spikes/quiz_writeback/FINDINGS.md`.
 
 ---
 
-## #2 — Canvas OAuth + course import (P0-1)
-**Labels:** `backend` `canvas-integration` `phase-1` · **Size:** L · **Depends on:** #1
+## #2 — Canvas connect + course import (P0-1)
+**Labels:** `frontend` `backend` `canvas-integration` `phase-1` · **Size:** L · **Depends on:** #3
 
-**User story:** As an instructor, I want to connect my Canvas account and import a specific course so that the tool has my real content to work with.
+**User story:** As an instructor, I want to connect my Canvas course with my own credentials and import it, so that the tool has my real content to work with — without needing an LMS admin.
+
+**MVP auth path — manual base URL + personal access token (PAT).** For MVP we use a manual credential form, not OAuth. The instructor generates a personal access token in Canvas (Account → Settings → New Access Token) and pastes it with their Canvas base URL. This needs no developer-key registration or admin approval, and maps to the existing `CanvasAdapter.from_access_token(...)` path (`backend/canvas_import/canvas/adapter.py`). OAuth is deferred — see #2b.
+
+**Acceptance criteria**
+- [ ] A connect form accepts a **Canvas base URL** (e.g. `https://school.instructure.com`) and a **personal access token**; the token field is masked (password input).
+- [ ] The token is validated against Canvas before import (e.g. `GET /users/self`); an invalid token or unreachable/malformed URL shows a clear, specific error and no course row is created.
+- [ ] On valid credentials, the instructor sees their Canvas course list and selects exactly one course to import.
+- [ ] Import pulls modules, pages, and quizzes into the internal model (#3) and persists them to the Supabase scratchpad via `SupabaseCourseWriter`, then lands the instructor on the course tree view (#4).
+- [ ] Files (PPTX/PDF) are listed as read-only context, not imported as editable.
+- [ ] Import is non-destructive — the source Canvas course is unmodified (GET-only; already enforced by the adapter and its round-trip test).
+- [ ] New Quizzes import but are surfaced read-only (write-back stays gated on #1).
+- [ ] Clear error/empty states for auth failure, no courses, and partial import (`PartialImportError` — failed items preserved as `opaque`, never silently dropped).
+
+**Token handling (non-negotiable)**
+- [ ] The access token is used **server-side only**, in-memory for the duration of the import request. It is **never** written to the database, logs, error messages, analytics, or the browser (no `localStorage`/cookie). Only `courses.canvas_base_url` is persisted (matches the live schema and CLAUDE.md).
+- [ ] The token is never placed in a URL or query string; it travels in a request body over HTTPS.
+- [ ] Consult the `eduquest-compliance` guardrails when implementing credential handling.
+
+---
+
+## #2b — Canvas OAuth (deferred, post-MVP)
+**Labels:** `backend` `canvas-integration` · **Size:** L · **Depends on:** #2
+
+**User story:** As an instructor, I want to connect via Canvas OAuth (one-click, no manual token) so that connecting is easier and tokens refresh automatically.
 
 **Acceptance criteria**
 - [ ] Instructor completes Canvas OAuth as an individual (no LMS admin required) and grants course read/write scope.
-- [ ] Instructor selects one course from their course list to import.
-- [ ] Import pulls modules, pages, and quizzes into the internal model (#3).
-- [ ] Files (PPTX/PDF) are listed as read-only context, not imported as editable.
-- [ ] Import is non-destructive — the source Canvas course is unmodified.
-- [ ] Clear error/empty states for auth failure, no courses, or partial import.
+- [ ] Refresh-token lifecycle handled; import reuses the same course-selection + import flow as #2.
+- [ ] Reuses `CanvasOAuthClient` (`backend/canvas_import/canvas/oauth.py`).
+
+Note: OAuth needs a registered Canvas developer key, which many institutions gate behind an admin — that is why manual PAT is the MVP path.
 
 ---
 
