@@ -8,21 +8,27 @@ Broken out from PRD P0-1…P0-7. Flow: **import → agent edit with reviewable d
 
 ---
 
-## #1 — Spike: Canvas API write-back fidelity (quizzes)
-**Labels:** `spike` `canvas-integration` `phase-1` · **Size:** S · **Blocks:** #2, #9, #10
+## #1 — Spike: New-course export fidelity via Common Cartridge
+**Labels:** `spike` `canvas-integration` `phase-1` · **Size:** S · **Blocks:** #9, #10
 
-**Status:** OPEN — the July 14, 2026 BYU Classic probe preserved unchanged/restored payloads but
-failed stem/option write fidelity and Canvas UI verification. New Quizzes remain untested and
-read-only. See `backend/spikes/quiz_writeback/FINDINGS.md`.
+**Status:** REFRAMED. The export model changed from *in-place write-back* to *creating a new
+Canvas course*. The prior July 14, 2026 BYU probe proved in-place quiz write-back is NO-GO —
+stem/option edits silently failed in the Canvas UI (see `backend/spikes/quiz_writeback/FINDINGS.md`).
+That path is retired. The new question is whether we can reproduce our imported pages + quizzes
+in a **fresh** Canvas course by generating a Common Cartridge (`.imscc`) the professor uploads.
 
-**Why:** The whole export path depends on cleanly reading *and writing* quiz questions, correct answers, and points. New Quizzes vs. Classic Quizzes have different APIs and limits. De-risk before building.
+**Why:** Export now means *materializing a new course*, not mutating the live one. Common
+Cartridge sidesteps course-creation API permissions (which instructor PATs usually lack) and uses
+no write API against the live course — Canvas's own importer builds the content. The open risk is
+fidelity: how faithfully Canvas's `.imscc` importer reconstructs our pages and quizzes.
 
 **Acceptance criteria**
-- [x] Confirm which quiz type(s) we support in MVP (Classic, New, or both) and document API endpoints for read + write.
-- [x] Prove round-trip on a test course: read a quiz → write it back unchanged → verify no data loss.
-- [ ] Prove we can programmatically edit a question stem, an option, a correct answer, and point value, and see it in Canvas.
-- [x] Document any fields we *cannot* reliably write (constraints feed into #10 guardrails).
-- [ ] Written findings + go/no-go on scope in the issue thread.
+- [ ] Generate a valid Common Cartridge (`.imscc`) from the internal model (#3) containing modules, pages, and quizzes.
+- [ ] Upload it to a test Canvas course (Import Course Content → Common Cartridge) and verify a new course is created with no changes to any source course.
+- [ ] Confirm page bodies survive the round trip (structure, formatting, links, images).
+- [ ] Confirm quiz questions, options, correct answers, and point values survive; document how New Quizzes are handled (Canvas tends to import them as Classic).
+- [ ] Document any item types or fields Common Cartridge cannot represent (constraints feed into #8 guardrails and #9 export preview).
+- [ ] Written findings + go/no-go on the `.imscc` export path in the issue thread.
 
 ---
 
@@ -40,7 +46,7 @@ read-only. See `backend/spikes/quiz_writeback/FINDINGS.md`.
 - [x] Import pulls modules, pages, and quizzes into the internal model (#3) and persists them to the Supabase scratchpad via `SupabaseCourseWriter`, then lands the instructor on the course tree view (#4).
 - [x] Files (PPTX/PDF) are listed as read-only context, not imported as editable.
 - [x] Import is non-destructive — the source Canvas course is unmodified (GET-only; already enforced by the adapter and its round-trip test).
-- [x] New Quizzes import but are surfaced read-only (write-back stays gated on #1).
+- [x] New Quizzes import but are surfaced read-only in the editor until export fidelity is confirmed (gated on #1).
 - [x] Clear error/empty states for auth failure, no courses, and partial import (`PartialImportError` — failed items preserved as `opaque`, never silently dropped).
 
 **Token handling (non-negotiable)**
@@ -139,26 +145,35 @@ Note: OAuth needs a registered Canvas developer key, which many institutions gat
 ## #8 — Quiz-safety guardrails (P0-7)
 **Labels:** `frontend` `backend` `phase-1` · **Size:** M · **Depends on:** #6, #1
 
-**User story:** As an instructor, I want changes to quiz answers/points/question-count explicitly flagged so that I never silently ship a grading error.
+**User story:** As an instructor, I want changes to quiz answers/points/question-count explicitly flagged so that I trust the answer keys in the course I export.
+
+**Note:** Export now lands in a **new, student-less course**, so a silent grading change to a
+live gradebook is impossible by construction. These guardrails are therefore a *review-trust*
+mechanism (surface every answer-key change clearly), not a live-grading safety gate.
 
 **Acceptance criteria**
 - [ ] Any change to a correct answer, point value, or question count is visually flagged in the diff.
-- [ ] Export is blocked for a quiz-answer change until the instructor explicitly confirms it.
+- [ ] The pre-export preview (#9) summarizes all answer/point/count changes so the instructor confirms them before generating the cartridge.
 - [ ] Confirmation is per-change (or per-quiz), not a single blanket "yes."
 
 ---
 
-## #9 — Export to Canvas with preview + confirm (P0-6)
+## #9 — Export as a new Canvas course, with preview + confirm (P0-6)
 **Labels:** `backend` `canvas-integration` `phase-1` · **Size:** L · **Depends on:** #3, #7, #1
 
-**User story:** As an instructor, I want to export edits back to Canvas, with a preview and confirmation, so that changes reach my students without fear of breaking the live course.
+**User story:** As an instructor, I want to export my edited course as a **new** Canvas course, with a preview and confirmation, so that I get a clean copy of my changes without any risk to the live course my students are using.
+
+**Details:** Export produces a Common Cartridge (`.imscc`) built from the accepted working copy
+(#7). The instructor uploads it to Canvas (Import Course Content → Common Cartridge), which
+creates a fresh course. We never call a write API against the source course.
 
 **Acceptance criteria**
-- [ ] Accepted changes to pages and quizzes write back to the Canvas course.
-- [ ] Quiz structure (questions, correct answers, points) writes back correctly (per #1 findings).
-- [ ] Instructor sees a pre-export preview of exactly what will change, and must confirm.
-- [ ] Untouched items are not rewritten.
-- [ ] Export failures are atomic-ish and surfaced clearly (no partial silent corruption); failed items reported.
+- [ ] The working copy (pages + quizzes, with accepted edits) serializes to a valid Common Cartridge.
+- [ ] Quiz structure (questions, correct answers, points) is represented per #1 findings.
+- [ ] Instructor sees a pre-export preview of exactly what the new course will contain (and, from #8, a summary of answer/point/count changes), and must confirm before the cartridge is generated.
+- [ ] The source Canvas course is provably never modified by export.
+- [ ] Export failures are surfaced clearly (invalid cartridge, unrepresentable items reported); no partial silent corruption.
+- [ ] Clear handoff instructions for uploading the `.imscc` into Canvas.
 
 ---
 
@@ -176,7 +191,7 @@ Note: OAuth needs a registered Canvas developer key, which many institutions gat
 ---
 
 ## Dependency order (suggested build sequence)
-1. **#1** (spike) — unblocks import/export scope
+1. **#1** (spike) — unblocks export scope (import is already read-only and working)
 2. **#2 + #3** — import + model (parallel-ish once #1 lands)
 3. **#4** — course view
 4. **#5 → #6 → #7** — agent → diffs → accept/reject (sequential)

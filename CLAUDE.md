@@ -4,7 +4,7 @@ Working context for building this product. Read this first every session.
 
 ## What we're building
 
-An AI-native course editor for Canvas courses — "Cursor for Canvas courses." A professor **imports** a Canvas course, tells an **agent** how they want it changed, **reviews** the proposed edits as diffs, and **exports** the changes back to Canvas.
+An AI-native course editor for Canvas courses — "Cursor for Canvas courses." A professor **imports** a Canvas course, tells an **agent** how they want it changed, **reviews** the proposed edits as diffs, and **exports** the result as a **brand-new Canvas course** (the original is never touched). Export is via a Common Cartridge (`.imscc`) file the professor uploads to Canvas — no course-creation API permissions and no write API against the live course.
 
 See `MVP-Spec.md` (full PRD) and `Phase1-Issues.md` (build breakdown) in this folder. Those two files are the source of truth — this file is the quick orientation.
 
@@ -31,11 +31,12 @@ If a request seems to pull toward one of these, flag it as out-of-MVP-scope befo
 
 ## Non-negotiable constraints
 
-- **Round-trip integrity is sacred.** Import → export with no edits must reproduce the original course exactly. Zero data loss, no broken quizzes, no scrambled formatting. Test this continuously.
-- **Never silent-edit.** The agent proposes diffs; nothing writes to the working copy until the professor accepts, and nothing writes to Canvas until they confirm an export.
-- **Quiz-answer safety.** Any change to a correct answer, point value, or question count must be flagged and require explicit confirmation before export. A silent grading error is the worst possible bug.
+- **Round-trip integrity is sacred.** Import → export with no edits must produce a new Canvas course that reproduces the original exactly. Zero data loss, no broken quizzes, no scrambled formatting. Test this continuously.
+- **Never silent-edit.** The agent proposes diffs; nothing writes to the working copy until the professor accepts, and nothing leaves the workspace until they confirm an export.
+- **Export creates a new course; the source is never mutated.** Export produces a Common Cartridge the professor imports into Canvas as a fresh course. We never PATCH the live course, so a silent change to an enrolled-student gradebook is impossible by construction.
+- **Quiz-answer safety.** Any change to a correct answer, point value, or question count must still be flagged in review — the professor is trusting the exported answer keys. Because the export lands in a student-less new course, this is a review flag, not a live-grading gate.
 - **Import is non-destructive.** The source Canvas course is never modified on import.
-- **Canvas write-back is a known risk.** New Quizzes vs. Classic Quizzes differ. Confirm write fidelity (Issue #1 spike) before assuming any quiz edit will export cleanly.
+- **Common Cartridge fidelity is a known risk.** Canvas's `.imscc` importer builds the quizzes; it tends to import New Quizzes as Classic. Confirm new-course fidelity (Issue #1 spike) before assuming any quiz exports cleanly.
 - **Canvas credentials are request-local.** Never store the entered Canvas URL or PAT in environment
   files, cookies, browser storage, URLs, logs, Supabase columns, fixtures, or working-copy files.
 - **Workspace expiry is fixed.** A successful import creates one random workspace with a deadline
