@@ -16,7 +16,6 @@ export type Database = {
     Tables: {
       courses: {
         Row: {
-          canvas_base_url: string
           canvas_course_id: string
           created_at: string
           expires_at: string
@@ -25,14 +24,12 @@ export type Database = {
           import_status: string
           imported_at: string
           name: string
-          owner_id: string | null
           raw_payload: Json
           schema_version: number
           updated_at: string
-          workspace_id: string | null
+          workspace_id: string
         }
         Insert: {
-          canvas_base_url: string
           canvas_course_id: string
           created_at?: string
           expires_at?: string
@@ -41,14 +38,12 @@ export type Database = {
           import_status?: string
           imported_at?: string
           name: string
-          owner_id?: string | null
           raw_payload?: Json
           schema_version?: number
           updated_at?: string
-          workspace_id?: string | null
+          workspace_id: string
         }
         Update: {
-          canvas_base_url?: string
           canvas_course_id?: string
           created_at?: string
           expires_at?: string
@@ -57,11 +52,10 @@ export type Database = {
           import_status?: string
           imported_at?: string
           name?: string
-          owner_id?: string | null
           raw_payload?: Json
           schema_version?: number
           updated_at?: string
-          workspace_id?: string | null
+          workspace_id?: string
         }
         Relationships: []
       }

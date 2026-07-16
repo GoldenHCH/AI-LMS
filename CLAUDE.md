@@ -4,7 +4,7 @@ Working context for building this product. Read this first every session.
 
 ## What we're building
 
-An AI-native course editor for Canvas Cources — "Cursor for Canvas courses." A professor **imports** a Canvas course, tells an **agent** how they want it changed, **reviews** the proposed edits as diffs, and **exports** the changes back to Canvas.
+An AI-native course editor for Canvas courses — "Cursor for Canvas courses." A professor **imports** a Canvas course, tells an **agent** how they want it changed, **reviews** the proposed edits as diffs, and **exports** the changes back to Canvas.
 
 See `MVP-Spec.md` (full PRD) and `Phase1-Issues.md` (build breakdown) in this folder. Those two files are the source of truth — this file is the quick orientation.
 
@@ -36,6 +36,12 @@ If a request seems to pull toward one of these, flag it as out-of-MVP-scope befo
 - **Quiz-answer safety.** Any change to a correct answer, point value, or question count must be flagged and require explicit confirmation before export. A silent grading error is the worst possible bug.
 - **Import is non-destructive.** The source Canvas course is never modified on import.
 - **Canvas write-back is a known risk.** New Quizzes vs. Classic Quizzes differ. Confirm write fidelity (Issue #1 spike) before assuming any quiz edit will export cleanly.
+- **Canvas credentials are request-local.** Never store the entered Canvas URL or PAT in environment
+  files, cookies, browser storage, URLs, logs, Supabase columns, fixtures, or working-copy files.
+- **Workspace expiry is fixed.** A successful import creates one random workspace with a deadline
+  exactly 30 minutes later. Activity must not extend it; expiry or Disconnect removes access.
+- **Anonymous isolation is mandatory.** Course reads are server-only and must match course ID,
+  workspace ID, and expiry. Browser Supabase roles must have no course-content privileges.
 
 ## Data model (keep it faithful and extensible)
 
@@ -48,7 +54,7 @@ If a request seems to pull toward one of these, flag it as out-of-MVP-scope befo
 ## Build order (Phase 1)
 
 1. `#1` Spike: Canvas quiz write-back fidelity — **blocks everything downstream**
-2. `#2` Canvas OAuth + import, `#3` internal course model (lossless round-trip)
+2. `#2` Manual Canvas URL/PAT import, `#3` internal course model (lossless round-trip). OAuth is deferred.
 3. `#4` Module/item tree view
 4. `#5` Agent chat → `#6` diffs → `#7` accept/reject/refine (sequential; diffs are the hard part)
 5. `#8` Quiz-safety guardrails
@@ -70,8 +76,8 @@ Phase 0 is a concierge test: hand-produce one real professor's intended next-sem
 
 _Chosen incrementally — update as decisions land._
 
-- **Database / backend:** **Supabase** (managed Postgres 17). Project `AI LMS` (`mlczrzmwtmmycmurjity`, region `ca-central-1`). Access via `@supabase/supabase-js`; client lives in `lib/supabase/client.ts`. Credentials in `.env` (gitignored; template in `.env.example`), using the **publishable** key. Env vars follow the Next.js convention: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`. **Course schema is live** (migration `supabase/migrations/0001_create_course_scratchpad_schema.sql`): a faithful relational mirror of the `canvas_import` model — `courses → modules → module_items → (pages | quizzes | files | opaque)`, `quizzes → quiz_questions → quiz_answers`, each row carrying a `raw_payload jsonb` for lossless round-trip. It stores an imported course as an editable **scratchpad** before export. **RLS is enabled on every table with no public policies**, so the anon key cannot read/write course data — all access must be server-side via the **secret** key. The Canvas access token is never stored (only `canvas_base_url`). Generated types in `lib/supabase/types.ts`; regenerate after schema changes.
-- **App framework:** **Next.js** with **`@supabase/ssr`** for auth/session. Chosen direction, **not yet scaffolded** — the repo today is credentials-only wiring.
+- **Database / backend:** **Supabase** (managed Postgres 17). Project `AI LMS` (`mlczrzmwtmmycmurjity`, region `ca-central-1`). Course reads and writes are server-only through `SUPABASE_SECRET_KEY`; RLS is enabled and all privileges are revoked from `anon` and `authenticated` on every course-content table. Imported trees are isolated by required random workspace UUIDs. They become inaccessible exactly 30 minutes after successful import and cascade-delete through a one-minute Cron job. The schema has no Canvas base URL, PAT, or legacy owner column. Generated types live in `lib/supabase/types.ts`; regenerate after schema changes.
+- **App framework:** **Next.js 16 App Router**. `/` is always a blank manual Canvas URL/PAT form. The active course route requires a signed `HttpOnly`, `Secure`, `SameSite=Strict` workspace cookie containing only a workspace UUID and fixed expiry. The course UI clears at expiry; Disconnect deletes immediately.
 - **Canvas import core:** Python 3.11+, `canvasapi` 3.6.0 for Classic resources,
   `requests` for New Quiz REST endpoints, LMS-agnostic dataclasses, and a versioned JSON MVP
   working copy. New Quiz write-back stays disabled until the live fidelity spike passes.
@@ -82,20 +88,56 @@ _Chosen incrementally — update as decisions land._
 **Commands**
 - `npm install` — install dependencies
 - `npm run check:supabase` — verify the Supabase connection (URL + key reachable)
+- `npm run typecheck` — run TypeScript checks
+- `npm run build` — run the production Next.js build
+- `npm run test:web` — run offline workspace-cookie tests
+- `npm run test:workspace-live` — opt-in live isolation/expiry/disconnect test; requires the app and live Supabase configuration
 - `pip install -r requirements-dev.txt` — install the Canvas core and test dependencies
 - `python -m pytest -q` — run the offline lossless round-trip suite
+- `python backend/scripts/verify_live_roundtrip.py` — interactive, GET-only live Canvas round-trip gate
+- `python -m uvicorn canvas_import.service.app:app --app-dir backend --port 8000` — run the import sidecar
 
 **Repo layout (so far)**
-- `lib/supabase/client.ts` — configured Supabase client
+- `app/api/canvas/import/route.ts` — creates trusted workspace IDs and sets the signed cookie
+- `app/api/workspace/disconnect/route.ts` — deletes the active workspace and clears its cookie
+- `lib/workspaces/` — workspace signing, cookie parsing, and server-only deletion
+- `lib/supabase/admin.ts` — server-only Supabase secret client; there is no browser database client
 - `lib/supabase/types.ts` — generated DB types (regenerate after migrations)
 - `supabase/migrations/` — SQL schema migrations (source of truth for the DB)
 - `scripts/check-supabase.mjs` — connection verification
-- `canvas_import/model/` — LMS-agnostic course working-copy model
-- `canvas_import/canvas/` — Canvas OAuth/import/New Quiz adapter boundary
-- `spikes/quiz_writeback/` — explicit live fidelity probes
-- `tests/roundtrip/` — offline and opt-in live round-trip gates
-- `.env` / `.env.example` — Supabase credentials + template
+- `backend/canvas_import/model/` — LMS-agnostic course working-copy model
+- `backend/canvas_import/canvas/` — Canvas import/New Quiz adapter boundary
+- `backend/canvas_import/service/` — service-token-protected request-local import sidecar
+- `backend/spikes/quiz_writeback/` — explicit live fidelity probes
+- `backend/tests/roundtrip/` — offline persistence and round-trip gates
+- `tests/web/` — offline signed-session tests and opt-in live workspace isolation test
+- `.env` / `.env.example` — infrastructure credentials only; never Canvas user credentials
 - `MVP-Spec.md`, `Phase1-Issues.md` — PRD + Phase 1 build breakdown
+
+## Transient workspace implementation
+
+- `POST /api/canvas/import` ignores browser-supplied workspace fields, generates a UUID, forwards
+  it to the trusted sidecar, and returns only `courseUuid`, `partial`, and `expiresAt`.
+- The sidecar starts the 30-minute clock only after Canvas retrieval succeeds and immediately
+  before persistence. The deadline is stored on the course row and never refreshed.
+- Course Server Components scope reads by both course UUID and workspace UUID and reject rows
+  where `expires_at <= now()`.
+- The cookie is HMAC-signed with a domain-separated server key. Forged or expired cookies decode
+  to no session and redirect to `/`.
+- Supabase Cron physically deletes expired course trees every minute; foreign keys cascade through
+  modules, items, pages, quizzes, questions, answers, and files.
+- Future Canvas export must request a fresh URL and PAT.
+
+## Data and compliance boundary
+
+- Current imports contain instructor-authored course content and quiz answer keys, but no
+  enrollments, submissions, grades, attendance, analytics, profiles, or student identifiers.
+- Raw Canvas payloads and file/content URLs may be retained for the 30-minute lossless working
+  copy. Do not add unrelated identity, device, location, analytics, or advertising fields.
+- No AI/ML processing occurs in the import phase. Before real school data flows, complete the
+  applicable DPA and sub-processor review. Never use course or student data for model training.
+- Preserve accessible labels, keyboard operation, focus management, and 44px targets in all
+  connection, timer, error, and destructive-action UI.
 
 ## Conventions
 

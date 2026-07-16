@@ -5,14 +5,13 @@ against an isolated, unpublished test course with no student submissions. Both p
 an explicit write flag and exact course-ID confirmation. By default they restore the original
 question in a `finally` block.
 
-Install dependencies and set credentials without committing them:
+Install dependencies. Each probe prompts for the Canvas URL and masks the token with `getpass`;
+neither credential is read from environment variables:
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements-dev.txt
-export CANVAS_BASE_URL=https://your-school.test.instructure.com
-export CANVAS_ACCESS_TOKEN=your-test-token
 ```
 
 Classic Quiz:

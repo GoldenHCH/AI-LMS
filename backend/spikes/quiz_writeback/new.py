@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import argparse
-import os
+import getpass
 from copy import deepcopy
 from typing import Any
 
@@ -23,12 +23,7 @@ MARKER = " [cursor-canvas-writeback-spike]"
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--base-url", default=os.getenv("CANVAS_BASE_URL"), required=False
-    )
-    parser.add_argument(
-        "--access-token", default=os.getenv("CANVAS_ACCESS_TOKEN"), required=False
-    )
+    parser.add_argument("--base-url")
     parser.add_argument("--course-id", required=True)
     parser.add_argument(
         "--assignment-id",
@@ -42,8 +37,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--leave-edited", action="store_true")
     parser.add_argument("--report")
     args = parser.parse_args()
+    if not args.base_url:
+        args.base_url = input("Canvas HTTPS origin: ").strip()
+    args.access_token = getpass.getpass("Canvas personal access token: ")
     if not args.base_url or not args.access_token:
-        parser.error("set CANVAS_BASE_URL/CANVAS_ACCESS_TOKEN or pass both options")
+        parser.error("a Canvas URL and access token are required")
     return args
 
 

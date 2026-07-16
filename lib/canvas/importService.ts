@@ -5,7 +5,7 @@ import { randomUUID } from 'node:crypto'
 import { NextResponse } from 'next/server'
 
 const MAX_BODY_BYTES = 8 * 1024
-const NO_STORE_HEADERS = {
+export const NO_STORE_HEADERS = {
   'Cache-Control': 'private, no-store',
   Pragma: 'no-cache',
 }

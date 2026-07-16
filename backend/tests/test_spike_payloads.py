@@ -131,6 +131,9 @@ def test_classic_probe_ui_pause_records_confirmations_and_restores(
         [classic_probe.EDIT_UI_CONFIRMATION, classic_probe.RESTORE_UI_CONFIRMATION]
     )
     monkeypatch.setattr(classic_probe, "Canvas", lambda *_args: canvas)
+    monkeypatch.setattr(
+        classic_probe.getpass, "getpass", lambda _prompt="": "secret-token"
+    )
     monkeypatch.setattr("builtins.input", lambda _prompt="": next(confirmations))
     monkeypatch.setattr(
         sys,
@@ -139,8 +142,6 @@ def test_classic_probe_ui_pause_records_confirmations_and_restores(
             "classic",
             "--base-url",
             "https://canvas.example.edu",
-            "--access-token",
-            "secret-token",
             "--course-id",
             "course-1",
             "--quiz-id",

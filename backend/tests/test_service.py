@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -20,6 +21,7 @@ from canvas_import.service import app as service
 SERVICE_TOKEN = "service-token-with-at-least-thirty-two-bytes"
 PAT = "pat-that-must-remain-transient"
 ORIGIN = "https://school.instructure.com"
+WORKSPACE_ID = "11111111-1111-4111-8111-111111111111"
 FIXTURES = Path(__file__).parent / "fixtures"
 
 
@@ -96,6 +98,14 @@ def credentials_payload():
     return {"baseUrl": ORIGIN, "accessToken": PAT}
 
 
+def import_payload(course_id: str):
+    return {
+        **credentials_payload(),
+        "canvasCourseId": course_id,
+        "workspaceId": WORKSPACE_ID,
+    }
+
+
 def test_service_token_is_required_before_processing(service_client):
     client, _doubles = service_client
 
@@ -142,7 +152,7 @@ def test_forged_course_id_is_rejected(service_client):
     response = client.post(
         "/v1/canvas/import",
         headers=headers(),
-        json={**credentials_payload(), "canvasCourseId": "999"},
+        json=import_payload("999"),
     )
 
     assert response.status_code == 403
@@ -150,24 +160,28 @@ def test_forged_course_id_is_rejected(service_client):
     assert doubles.writer.calls == []
 
 
-def test_complete_import_persists_normalized_origin(service_client):
+def test_complete_import_persists_a_fixed_lifetime_workspace(service_client):
     client, doubles = service_client
 
     response = client.post(
         "/v1/canvas/import",
         headers=headers(),
-        json={**credentials_payload(), "canvasCourseId": "101"},
+        json=import_payload("101"),
     )
 
     assert response.status_code == 200
-    assert response.json() == {
-        "courseUuid": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-        "partial": False,
-        "issues": [],
-    }
+    body = response.json()
+    assert body["courseUuid"] == "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+    assert body["partial"] is False
+    assert body["issues"] == []
+    expires_at = datetime.fromisoformat(body["expiresAt"])
+    remaining = expires_at - datetime.now(UTC)
+    assert timedelta(minutes=29, seconds=55) <= remaining <= timedelta(minutes=30)
     writer_kwargs = doubles.writer.calls[0][1]
-    assert writer_kwargs["canvas_base_url"] == ORIGIN
+    assert writer_kwargs["workspace_id"] == WORKSPACE_ID
+    assert writer_kwargs["expires_at"] == expires_at
     assert writer_kwargs["import_issues"] == ()
+    assert "canvas_base_url" not in writer_kwargs
 
 
 def test_partial_import_is_persisted_instead_of_dropped(service_client):
@@ -177,7 +191,7 @@ def test_partial_import_is_persisted_instead_of_dropped(service_client):
     response = client.post(
         "/v1/canvas/import",
         headers=headers(),
-        json={**credentials_payload(), "canvasCourseId": "101"},
+        json=import_payload("101"),
     )
 
     assert response.status_code == 200

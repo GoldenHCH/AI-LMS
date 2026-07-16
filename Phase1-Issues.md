@@ -44,7 +44,8 @@ read-only. See `backend/spikes/quiz_writeback/FINDINGS.md`.
 - [x] Clear error/empty states for auth failure, no courses, and partial import (`PartialImportError` — failed items preserved as `opaque`, never silently dropped).
 
 **Token handling (non-negotiable)**
-- [x] The access token exists only in the browser's transient form state while typed and in request-local server memory during connect/import. It is **never** written to browser storage, cookies, URLs, the database, logs, error messages, or analytics. Only the normalized `courses.canvas_base_url` is persisted.
+- [x] The Canvas URL and access token exist only in transient form state and request-local server memory during connect/import. Neither is written to environment files, browser storage, cookies, URLs, the database, logs, error messages, or analytics.
+- [x] A successful import creates an opaque, signed-cookie workspace that is isolated from every other visitor, becomes inaccessible exactly 30 minutes after import, and is cascade-deleted by the next one-minute Cron run.
 - [x] The token is never placed in a URL or query string; it travels in a request body over HTTPS.
 - [x] Consult the `eduquest-compliance` guardrails when implementing credential handling.
 

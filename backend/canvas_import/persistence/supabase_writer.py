@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import os
+import uuid
+from datetime import datetime
 from typing import Any, Mapping, Sequence
 
 from supabase import Client, create_client
@@ -17,7 +19,7 @@ class SupabasePersistenceError(RuntimeError):
 class SupabaseCourseWriter:
     """Replace one imported course with a complete relational scratchpad tree.
 
-    The complete new tree is written before the previous owner-scoped tree is
+    The complete new tree is written before the previous workspace-scoped tree is
     deleted. A child failure therefore cleans up only the new row and leaves the
     professor's prior scratchpad intact.
     """
@@ -47,18 +49,23 @@ class SupabaseCourseWriter:
         self,
         course: Course,
         *,
-        canvas_base_url: str,
+        workspace_id: str,
+        expires_at: datetime,
         import_issues: Sequence[Any] = (),
     ) -> str:
         """Replace and persist ``course``, returning its generated UUID."""
 
-        if not canvas_base_url:
-            raise ValueError("canvas_base_url is required")
+        try:
+            workspace_id = str(uuid.UUID(workspace_id))
+        except (TypeError, ValueError, AttributeError) as exc:
+            raise ValueError("workspace_id must be a UUID") from exc
+        if expires_at.tzinfo is None or expires_at.utcoffset() is None:
+            raise ValueError("expires_at must be timezone-aware")
         canvas_course_id = _canvas_id(course.canvas_course_id)
         prior_response = (
             self.client.table("courses")
             .select("id")
-            .eq("canvas_base_url", canvas_base_url)
+            .eq("workspace_id", workspace_id)
             .eq("canvas_course_id", canvas_course_id)
             .execute()
         )
@@ -80,7 +87,8 @@ class SupabaseCourseWriter:
                 {
                     "canvas_course_id": canvas_course_id,
                     "name": course.name,
-                    "canvas_base_url": canvas_base_url,
+                    "workspace_id": workspace_id,
+                    "expires_at": expires_at.isoformat(),
                     "import_status": "partial" if issues else "complete",
                     "import_issues": issues,
                     "raw_payload": course.raw_payload,

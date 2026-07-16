@@ -2,7 +2,7 @@
 
 **Status:** Draft for review
 **Author:** Golden
-**Last updated:** July 14, 2026
+**Last updated:** July 15, 2026
 **One-liner:** Cursor for Canvas courses — a professor imports a course, tells an agent how to change it, reviews the proposed edits, and exports back to Canvas.
 
 ---
@@ -73,10 +73,12 @@ Conscientious professors update their courses every semester based on student fe
 ### Must-Have (P0)
 
 **P0-1 — Canvas import**
-Connect to Canvas (OAuth) and import a selected course's modules, pages, and quizzes into an internal structured representation (modules → items).
+Connect to Canvas with a manually entered URL and personal access token and import a selected course's modules, pages, and quizzes into an internal structured representation (modules → items).
 - Given a connected Canvas account, when the instructor selects a course, then its modules, pages, and quizzes are imported and displayed in a module/item tree.
 - Files (PPTX/PDF) are listed as read-only context but not editable.
 - Import is non-destructive; the source Canvas course is untouched on import.
+- Every visit begins with blank credential fields. The Canvas URL and token are never stored in environment files, cookies, browser storage, URLs, logs, or the database.
+- A successful import creates an isolated 30-minute workspace. Its deadline is fixed, access requires the matching signed secure cookie, and expiration or disconnect deletes the working copy.
 
 **P0-2 — Structured internal course model**
 Represent the course as editable objects (page = rich text/HTML; quiz = questions, options, correct answers, points) — the "codebase" the agent operates on.
@@ -102,6 +104,7 @@ Push the edited pages and quizzes back to the Canvas course.
 - Given accepted changes, when the instructor exports, then Canvas reflects the edits.
 - Quiz structure (questions, correct answers, points) writes back correctly.
 - Export is previewable and the instructor confirms before anything writes to Canvas.
+- Because Canvas credentials are not retained, export asks for a fresh Canvas URL and access token.
 
 **P0-7 — Quiz-safety guardrails**
 Any change to a quiz's correct answers, point values, or question count is explicitly flagged in the diff.
@@ -146,7 +149,7 @@ Any change to a quiz's correct answers, point values, or question count is expli
 - **[Stakeholder/Research — blocking] Is editing actually the bottleneck worth paying for?** The entire value rests on this. Validate via concierge (below) before heavy build.
 - **[Research — blocking] Does "pages and quizzes only" cover enough of what professors actually change?** If most content lives in PPTX/PDF, the MVP scope may be too thin. Measure on real courses.
 - **[Engineering] Canvas API write-back fidelity for quizzes** — do the New Quizzes vs. Classic Quizzes APIs let us write questions/answers/points cleanly? Confirm early; this can constrain P0-6/P0-7.
-- **[Engineering] OAuth / institutional permissions** — can an individual instructor authorize import/export without an LMS admin, or does procurement/IT block bottom-up adoption? (FERPA/privacy implications even without student data.)
+- **[Engineering] Future OAuth / institutional permissions** — the MVP uses a request-local PAT. Before replacing it with OAuth, confirm whether an individual instructor can authorize import/export without an LMS admin and how procurement/IT affects bottom-up adoption.
 - **[Design] Blank agent box vs. proposed-update entry point** — do professors get value typing into an empty agent, or do they need the P1-2 "here's a proposed set of changes, react to it" opener on day one?
 - **[Engineering/Design] Diff representation for rich content** — how do we show a clean, trustworthy before→after for HTML pages and quiz questions so review is genuinely fast?
 

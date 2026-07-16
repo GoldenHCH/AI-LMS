@@ -1,28 +1,29 @@
 import type { Metadata } from 'next'
-import { notFound } from 'next/navigation'
+import { redirect } from 'next/navigation'
 
 import { getCourseTree } from '@/lib/courses/getCourseTree'
+import { getWorkspaceSession } from '@/lib/workspaces/session'
 
 import { CourseView } from './CourseView'
 
 export const dynamic = 'force-dynamic'
+export const metadata: Metadata = { title: 'Course workspace' }
 
 type CoursePageProps = {
   params: Promise<{ courseId: string }>
 }
 
-export async function generateMetadata({ params }: CoursePageProps): Promise<Metadata> {
-  const { courseId } = await params
-  const course = await getCourseTree(courseId)
-  return { title: course?.name ?? 'Course not found' }
-}
-
 export default async function CoursePage({ params }: CoursePageProps) {
   const { courseId } = await params
-  const course = await getCourseTree(courseId)
+  const session = await getWorkspaceSession()
+  if (!session) {
+    redirect('/')
+  }
+
+  const course = await getCourseTree(courseId, session.workspaceId)
 
   if (!course) {
-    notFound()
+    redirect('/')
   }
 
   return <CourseView course={course} />

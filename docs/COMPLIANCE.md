@@ -14,12 +14,12 @@ student submissions, grades, attendance, analytics, profiles, or student identif
   pagination are rejected before a second request.
 - Import calls only Canvas read methods. Unsupported content and partial failures are surfaced;
   they are not dropped or logged with full payloads.
-- Supabase working copies default to 90-day retention. A daily Cron job hard-deletes expired
-  courses and cascades through the imported tree; audit events have a three-year hard-delete
-  deadline. Re-import writes the complete replacement before deleting the prior scratchpad.
-- Course rows are owned by a Supabase Auth instructor. Read-only RLS follows the complete course
-  hierarchy and requires both ownership and an `aal2` MFA claim. Browser roles have no direct
-  mutation grant; the metadata-only audit table is server-only.
+- Supabase working copies have a fixed 30-minute lifetime measured from successful import. Reads
+  reject expired rows immediately and a one-minute Cron job cascade-deletes the imported tree.
+  Re-import writes the complete replacement before deleting the prior workspace copy.
+- A signed, HttpOnly, Secure, SameSite=Strict cookie contains only an opaque workspace UUID and expiry.
+  Server reads require the matching workspace ID; RLS is enabled and all course-table privileges
+  are revoked from `anon` and `authenticated`, so browser roles cannot read or mutate content.
 - The model stores only fields needed for round-trip course editing. It does not add device,
   location, analytics, advertising, or student-profile fields.
 - Quiz answer keys stay inside the private working copy and reports from the fidelity probes list
@@ -31,8 +31,8 @@ student submissions, grades, attendance, analytics, profiles, or student identif
 The application authorization and retention controls below are implemented. Production data flow
 remains blocked until the external school/vendor gates are completed:
 
-1. Invite only authorized instructors and require TOTP MFA; the application re-checks the chosen
-   course against active teacher, TA, or designer enrollments before importing.
+1. The application re-checks the chosen course against active teacher, TA, or designer
+   enrollments before importing; a future persistent-account mode must require instructor MFA.
 2. Execute the applicable school DPA and sub-processor review before real course data flows.
 3. Confirm encrypted-at-rest storage, deletion-on-request operations, and retention evidence in
    the deployment environment.

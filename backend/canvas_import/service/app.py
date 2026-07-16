@@ -10,6 +10,8 @@ import logging
 import os
 import secrets
 import uuid
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Annotated, Any
 
 from fastapi import FastAPI, Request
@@ -34,11 +36,30 @@ from canvas_import.persistence import SupabaseCourseWriter
 from canvas_import.persistence.supabase_writer import SupabasePersistenceError
 
 
+def _load_repo_dotenv() -> None:
+    """Load repo-root `.env` for local sidecar runs without overriding the process env."""
+    env_path = Path(__file__).resolve().parents[3] / ".env"
+    if not env_path.is_file():
+        return
+    for raw_line in env_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        if not key or key in os.environ:
+            continue
+        os.environ[key] = value.strip().strip("'").strip('"')
+
+
+_load_repo_dotenv()
+
 logging.getLogger("canvasapi").setLevel(logging.INFO)
 logger = logging.getLogger("canvas_import.service")
 
 MAX_BODY_BYTES = 8 * 1024
 OVERALL_TIMEOUT_SECONDS = 5 * 60
+WORKSPACE_TTL = timedelta(minutes=30)
 SERVICE_TOKEN_HEADER = "x-canvas-import-service-token"
 REQUEST_ID_HEADER = "x-request-id"
 
@@ -66,6 +87,7 @@ class CanvasImportRequest(CanvasCredentialsRequest):
         str | int,
         Field(alias="canvasCourseId"),
     ]
+    workspace_id: Annotated[str, Field(alias="workspaceId", min_length=36, max_length=36)]
 
     @field_validator("canvas_course_id")
     @classmethod
@@ -75,6 +97,14 @@ class CanvasImportRequest(CanvasCredentialsRequest):
         if not str(value).strip() or len(str(value)) > 128:
             raise ValueError("Canvas course ID is invalid")
         return value
+
+    @field_validator("workspace_id")
+    @classmethod
+    def valid_workspace_id(cls, value: str) -> str:
+        try:
+            return str(uuid.UUID(value))
+        except (TypeError, ValueError, AttributeError) as exc:
+            raise ValueError("workspace ID must be a UUID") from exc
 
 
 class ServiceError(RuntimeError):
@@ -247,15 +277,19 @@ def import_canvas_course(
             course = partial.course
             issues = partial.issues
 
+        # Clock starts only after Canvas retrieval succeeds, immediately before persist.
+        expires_at = datetime.now(UTC) + WORKSPACE_TTL
         course_uuid = _course_writer().write(
             course,
-            canvas_base_url=normalized_origin,
+            workspace_id=payload.workspace_id,
+            expires_at=expires_at,
             import_issues=issues,
         )
         return {
             "courseUuid": course_uuid,
             "partial": bool(issues),
             "issues": [_issue_payload(issue) for issue in issues],
+            "expiresAt": expires_at.isoformat(),
         }
     except Exception as exc:
         raise _classify_error(exc) from None

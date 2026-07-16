@@ -9,10 +9,11 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
+    "test:web": "node --experimental-strip-types --test tests/web/*.test.ts",
+    "test:workspace-live": "RUN_WORKSPACE_LIVE_TESTS=1 node --env-file=.env --experimental-strip-types --test tests/web/workspaceAccess.live.ts",
     "check:supabase": "node --env-file=.env scripts/check-supabase.mjs"
   },
   "dependencies": {
-    "@supabase/ssr": "0.12.3",
     "@supabase/supabase-js": "2.110.6",
     "next": "16.2.10",
     "react": "19.2.7",

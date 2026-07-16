@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
@@ -12,8 +13,9 @@ from canvas_import.persistence import SupabaseCourseWriter
 
 from .conftest import FIXTURES
 
-CANVAS_ORIGIN = "https://school.instructure.com"
-OTHER_ORIGIN = "https://other.instructure.com"
+WORKSPACE_ID = "11111111-1111-4111-8111-111111111111"
+OTHER_WORKSPACE_ID = "22222222-2222-4222-8222-222222222222"
+EXPIRES_AT = datetime(2026, 7, 15, 23, 59, tzinfo=UTC)
 
 
 @dataclass
@@ -106,7 +108,8 @@ def test_writer_maps_the_full_classic_fixture_offline():
 
     course_id = SupabaseCourseWriter(client).write(  # type: ignore[arg-type]
         course,
-        canvas_base_url=CANVAS_ORIGIN,
+        workspace_id=WORKSPACE_ID,
+        expires_at=EXPIRES_AT,
     )
 
     assert course_id == client.rows["courses"][0]["id"]
@@ -123,7 +126,9 @@ def test_writer_maps_the_full_classic_fixture_offline():
         True,
     ]
     assert all(row["raw_payload"] for row in client.rows["module_items"])
-    assert client.rows["courses"][0]["canvas_base_url"] == CANVAS_ORIGIN
+    assert client.rows["courses"][0]["workspace_id"] == WORKSPACE_ID
+    assert client.rows["courses"][0]["expires_at"] == EXPIRES_AT.isoformat()
+    assert "canvas_base_url" not in client.rows["courses"][0]
     assert client.rows["courses"][0]["import_status"] == "complete"
 
 
@@ -134,7 +139,8 @@ def test_writer_requests_cascade_cleanup_after_a_partial_failure():
     with pytest.raises(RuntimeError, match="forced pages failure"):
         SupabaseCourseWriter(client).write(  # type: ignore[arg-type]
             course,
-            canvas_base_url=CANVAS_ORIGIN,
+            workspace_id=WORKSPACE_ID,
+            expires_at=EXPIRES_AT,
         )
 
     cleanup_deletes = [filters for table, filters in client.deletes if table == "courses"]
@@ -150,12 +156,12 @@ def test_failed_reimport_preserves_the_previous_tree():
     client.rows["courses"] = [
         {
             "id": old_id,
-            "canvas_base_url": CANVAS_ORIGIN,
+            "workspace_id": WORKSPACE_ID,
             "canvas_course_id": str(course.canvas_course_id),
         },
         {
             "id": other_id,
-            "canvas_base_url": OTHER_ORIGIN,
+            "workspace_id": OTHER_WORKSPACE_ID,
             "canvas_course_id": str(course.canvas_course_id),
         },
     ]
@@ -163,7 +169,8 @@ def test_failed_reimport_preserves_the_previous_tree():
     with pytest.raises(RuntimeError, match="forced pages failure"):
         SupabaseCourseWriter(client).write(  # type: ignore[arg-type]
             course,
-            canvas_base_url=CANVAS_ORIGIN,
+            workspace_id=WORKSPACE_ID,
+            expires_at=EXPIRES_AT,
         )
 
     remaining_ids = {row["id"] for row in client.rows["courses"]}
@@ -177,7 +184,8 @@ def test_partial_issue_metadata_is_sanitized_and_persisted():
 
     SupabaseCourseWriter(client).write(  # type: ignore[arg-type]
         course,
-        canvas_base_url=CANVAS_ORIGIN,
+        workspace_id=WORKSPACE_ID,
+        expires_at=EXPIRES_AT,
         import_issues=[
             {
                 "phase": "module_item",
@@ -206,19 +214,20 @@ def test_successful_reimport_replaces_only_the_matching_origin_and_course():
     client.rows["courses"] = [
         {
             "id": old_id,
-            "canvas_base_url": CANVAS_ORIGIN,
+            "workspace_id": WORKSPACE_ID,
             "canvas_course_id": str(course.canvas_course_id),
         },
         {
             "id": other_id,
-            "canvas_base_url": OTHER_ORIGIN,
+            "workspace_id": OTHER_WORKSPACE_ID,
             "canvas_course_id": str(course.canvas_course_id),
         },
     ]
 
     new_id = SupabaseCourseWriter(client).write(  # type: ignore[arg-type]
         course,
-        canvas_base_url=CANVAS_ORIGIN,
+        workspace_id=WORKSPACE_ID,
+        expires_at=EXPIRES_AT,
     )
 
     remaining_ids = {row["id"] for row in client.rows["courses"]}
@@ -255,7 +264,8 @@ def test_live_supabase_writer_preserves_structure_and_grading(fixture_name: str)
     client = create_client(url, key)
     course_id = SupabaseCourseWriter(client).write(
         course,
-        canvas_base_url=CANVAS_ORIGIN,
+        workspace_id=WORKSPACE_ID,
+        expires_at=datetime.now(UTC) + timedelta(minutes=30),
     )
 
     try:

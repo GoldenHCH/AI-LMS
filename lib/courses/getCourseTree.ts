@@ -1,10 +1,9 @@
 import 'server-only'
 
-import { cache } from 'react'
 import sanitizeHtml from 'sanitize-html'
 
 import type { Json } from '@/lib/supabase/types'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export type ItemKind = 'page' | 'quiz' | 'file' | 'opaque'
 export type QuizEngine = 'classic' | 'new'
@@ -82,6 +81,7 @@ export type CourseTree = {
   id: string
   canvasCourseId: string
   name: string
+  expiresAt: string
   importStatus: 'complete' | 'partial'
   importIssues: CourseImportIssue[]
   modules: CourseModule[]
@@ -89,11 +89,6 @@ export type CourseTree = {
   moduleCount: number
   itemCount: number
 }
-
-export type CourseSummary = Pick<
-  CourseTree,
-  'id' | 'canvasCourseId' | 'name' | 'moduleCount' | 'itemCount'
->
 
 type RawAnswer = {
   id: string
@@ -162,6 +157,7 @@ type RawCourse = {
   id: string
   canvas_course_id: string
   name: string
+  expires_at: string
   import_status: string
   import_issues: Json
   modules: RawModule[] | null
@@ -172,6 +168,7 @@ const COURSE_TREE_SELECT = `
   id,
   canvas_course_id,
   name,
+  expires_at,
   import_status,
   import_issues,
   modules!modules_course_id_fkey (
@@ -233,58 +230,27 @@ const COURSE_TREE_SELECT = `
   )
 `
 
-export const getCourseTree = cache(async function getCourseTree(
+export async function getCourseTree(
   courseId: string,
+  workspaceId: string,
 ): Promise<CourseTree | null> {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
   const { data, error } = await supabase
     .from('courses')
     .select(COURSE_TREE_SELECT)
     .eq('id', courseId)
+    .eq('workspace_id', workspaceId)
+    .gt('expires_at', new Date().toISOString())
     .maybeSingle()
 
   if (error) {
-    throw new Error(`Could not load course tree: ${error.message}`)
+    throw new Error('Could not load course tree')
   }
   if (!data) {
     return null
   }
 
   return mapCourse(data as unknown as RawCourse)
-})
-
-export async function listCourseSummaries(): Promise<CourseSummary[]> {
-  const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('courses')
-    .select(
-      `
-        id,
-        canvas_course_id,
-        name,
-        modules!modules_course_id_fkey (
-          id,
-          module_items!module_items_module_id_fkey (id)
-        )
-      `,
-    )
-    .order('imported_at', { ascending: false })
-
-  if (error) {
-    throw new Error(`Could not load courses: ${error.message}`)
-  }
-
-  return (data ?? []).map((course) => ({
-    id: course.id,
-    canvasCourseId: course.canvas_course_id,
-    name: course.name,
-    moduleCount: course.modules?.length ?? 0,
-    itemCount:
-      course.modules?.reduce(
-        (count, module) => count + (module.module_items?.length ?? 0),
-        0,
-      ) ?? 0,
-  }))
 }
 
 function mapCourse(raw: RawCourse): CourseTree {
@@ -301,6 +267,7 @@ function mapCourse(raw: RawCourse): CourseTree {
     id: raw.id,
     canvasCourseId: raw.canvas_course_id,
     name: raw.name,
+    expiresAt: raw.expires_at,
     importStatus: raw.import_status === 'partial' ? 'partial' : 'complete',
     importIssues: mapImportIssues(raw.import_issues),
     modules,

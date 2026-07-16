@@ -1,13 +1,12 @@
 'use client'
 
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { FormEvent, useRef, useState } from 'react'
 
 type CanvasUser = { canvasUserId: string; name: string }
 type CanvasCourse = { canvasCourseId: string; name: string }
 type CoursesResponse = { user: CanvasUser; courses: CanvasCourse[] }
-type ImportResponse = { courseUuid: string; partial: boolean }
+type ImportResponse = { courseUuid: string; partial: boolean; expiresAt: string }
 type ErrorEnvelope = { error?: { message?: string; requestId?: string } }
 
 export function CanvasConnectForm() {
@@ -82,8 +81,9 @@ export function CanvasConnectForm() {
       if (!response.ok || !validImportResponse(payload)) {
         throw new Error(errorMessage(payload, 'The course could not be imported.'))
       }
-      setStatus(payload.partial ? 'Partial import saved with a durable warning.' : 'Import complete.')
+      setStatus(payload.partial ? 'Partial import completed with review warnings.' : 'Import complete.')
       setAccessToken('')
+      setBaseUrl('')
       router.replace(`/courses/${payload.courseUuid}`)
       router.refresh()
     } catch (caught) {
@@ -100,22 +100,21 @@ export function CanvasConnectForm() {
     setCanvasUser(null)
     setCourses([])
     setSelectedCourseId('')
-    setStatus('Canvas connection reset. The access token was cleared.')
+    setStatus('Canvas connection reset. The Canvas URL and access token were cleared.')
     setError('')
   }
 
   return (
     <div className="mx-auto max-w-4xl">
-      <Link href="/" className="inline-flex min-h-11 items-center text-sm font-semibold text-ocean underline underline-offset-4">
-        Back to courses
-      </Link>
-      <header className="mt-5 border-b border-slate-200 pb-8">
+      <header className="border-b border-slate-200 pb-8">
         <p className="eyebrow">Secure Canvas import</p>
         <h1 className="mt-3 text-4xl font-semibold tracking-[-0.035em] text-ink sm:text-5xl">
           Connect a Canvas course
         </h1>
         <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">
-          Your personal access token is used only for this connection and import. It is never saved to cookies, browser storage, URLs, logs, or the course database.
+          Enter your Canvas URL and personal access token for this visit. Neither
+          credential is saved. After import, the temporary course workspace is
+          deleted automatically after 30 minutes.
         </p>
       </header>
 
@@ -134,7 +133,7 @@ export function CanvasConnectForm() {
       ) : null}
 
       {!canvasUser ? (
-        <form onSubmit={connect} className="mt-8 rounded-3xl border border-slate-200 bg-white p-6 shadow-panel sm:p-8">
+        <form autoComplete="off" onSubmit={connect} className="mt-8 rounded-3xl border border-slate-200 bg-white p-6 shadow-panel sm:p-8">
           <fieldset disabled={busy !== null} className="space-y-6 disabled:opacity-70">
             <legend className="text-xl font-semibold text-ink">Canvas connection</legend>
             <div>
@@ -148,7 +147,7 @@ export function CanvasConnectForm() {
                 id="canvas-base-url"
                 type="url"
                 inputMode="url"
-                autoComplete="url"
+                autoComplete="off"
                 aria-describedby="canvas-base-help"
                 required
                 maxLength={255}
@@ -274,7 +273,12 @@ function validCoursesResponse(value: unknown): value is CoursesResponse {
 function validImportResponse(value: unknown): value is ImportResponse {
   if (value === null || typeof value !== 'object') return false
   const record = value as Partial<ImportResponse>
-  return typeof record.courseUuid === 'string' && typeof record.partial === 'boolean'
+  return (
+    typeof record.courseUuid === 'string' &&
+    typeof record.partial === 'boolean' &&
+    typeof record.expiresAt === 'string' &&
+    Number.isFinite(Date.parse(record.expiresAt))
+  )
 }
 
 function errorMessage(value: ErrorEnvelope, fallback: string) {
