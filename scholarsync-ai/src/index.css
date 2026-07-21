@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+/* Self-hosted fonts (replaces the Google Fonts CDN <link> tags). Latin-only
+   subset — this is an English-language page, and the umbrella files pull in
+   Cyrillic/Greek/Vietnamese subsets we'd never serve. */
+@import "@fontsource/inter/latin-400.css";
+@import "@fontsource/inter/latin-500.css";
+@import "@fontsource/inter/latin-600.css";
+@import "@fontsource/inter/latin-700.css";
+@import "@fontsource/source-serif-4/latin-400.css";
+@import "@fontsource/source-serif-4/latin-400-italic.css";
+@import "@fontsource/source-serif-4/latin-600.css";
+@import "@fontsource/source-serif-4/latin-700.css";
+@import "@fontsource/source-serif-4/latin-800.css";
+
+@theme {
+  --color-paper: #F2F1EF;
+  --color-ink: #1A1A1A;
+  --color-accent: #0F172A;
+  --color-editorial-line: rgba(26, 26, 26, 0.15);
+  --font-serif: "Source Serif 4", "Georgia", serif;
+  --font-sans: "Inter", "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Custom editorial aesthetic styling */
+.editorial-border {
+  border-color: rgba(26, 26, 26, 0.15);
+}
+
+.editorial-divider {
+  border-bottom: 1px solid rgba(26, 26, 26, 0.15);
+}
+
+.editorial-divider-right {
+  border-right: 1px solid rgba(26, 26, 26, 0.15);
+}
+
+/* Selection colors matching ink and blue accent */
+::selection {
+  background-color: rgba(15, 23, 42, 0.15);
+  color: #0F172A;
+}
+
+/* Respect the OS-level reduced-motion preference for plain CSS transitions
+   and smooth-scroll. Motion (Framer Motion)-driven animations are handled
+   separately via <MotionConfig reducedMotion="user"> in main.tsx. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
