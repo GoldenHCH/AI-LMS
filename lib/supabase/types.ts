@@ -1,7 +1,3 @@
-// Generated from the Supabase schema (project `AI LMS`, mlczrzmwtmmycmurjity).
-// Source of truth: supabase/migrations/*.sql. Regenerate after schema changes with
-// the Supabase `generate_typescript_types` tooling; do not edit by hand.
-
 export type Json =
   | string
   | number
@@ -20,43 +16,46 @@ export type Database = {
     Tables: {
       courses: {
         Row: {
-          canvas_base_url: string | null
           canvas_course_id: string
           created_at: string
           expires_at: string
           id: string
+          import_issues: Json
+          import_status: string
           imported_at: string
           name: string
           raw_payload: Json
           schema_version: number
           updated_at: string
-          workspace_id: string | null
+          workspace_id: string
         }
         Insert: {
-          canvas_base_url?: string | null
           canvas_course_id: string
           created_at?: string
           expires_at?: string
           id?: string
+          import_issues?: Json
+          import_status?: string
           imported_at?: string
           name: string
           raw_payload?: Json
           schema_version?: number
           updated_at?: string
-          workspace_id?: string | null
+          workspace_id: string
         }
         Update: {
-          canvas_base_url?: string | null
           canvas_course_id?: string
           created_at?: string
           expires_at?: string
           id?: string
+          import_issues?: Json
+          import_status?: string
           imported_at?: string
           name?: string
           raw_payload?: Json
           schema_version?: number
           updated_at?: string
-          workspace_id?: string | null
+          workspace_id?: string
         }
         Relationships: []
       }

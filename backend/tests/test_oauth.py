@@ -38,7 +38,7 @@ class FakeSession:
 
 def client(session=None):
     return CanvasOAuthClient(
-        "https://canvas.example.edu",
+        "https://canvas.example.instructure.com",
         "client-id",
         "client-secret",
         "https://app.example.edu/oauth/callback",
@@ -77,9 +77,9 @@ def test_token_exchange_does_not_leak_secrets_in_repr():
 @pytest.mark.parametrize(
     "base_url",
     [
-        "http://canvas.example.edu",
-        "canvas.example.edu",
-        "https://user:pass@canvas.example.edu",
+        "http://canvas.example.instructure.com",
+        "canvas.example.instructure.com",
+        "https://user:pass@canvas.example.instructure.com",
     ],
 )
 def test_non_https_or_credentialed_canvas_urls_are_rejected(base_url):

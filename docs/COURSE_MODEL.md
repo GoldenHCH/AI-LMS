@@ -33,10 +33,11 @@ Course
 
 ## Persistence and retention
 
-`WorkingCopyStore` wraps each course in a schema-versioned envelope with `created_at` and
-`delete_after`. The default retention period is 90 days, files are written atomically with mode
-`0600`, and OAuth tokens are never included. A production host should run a deletion job for
-expired working copies and use encrypted storage at rest.
+`WorkingCopyStore` is the offline fixture/test envelope and writes private files atomically with
+mode `0600`. The website uses the relational Supabase mirror instead: every import receives a
+random `workspace_id`, becomes inaccessible exactly 30 minutes after import, and is cascade-
+deleted by a one-minute Cron cleanup. Canvas connection credentials are never included in either
+representation.
 
 ## Export boundary
 

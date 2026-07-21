@@ -8,6 +8,9 @@ from urllib.parse import urlparse
 
 import requests
 
+from .origin import validate_canvas_origin
+from .session import HardenedCanvasSession
+
 
 class NewQuizApiError(RuntimeError):
     """A sanitized Canvas New Quiz API failure."""
@@ -45,10 +48,16 @@ class NewQuizClient:
         *,
         session: requests.Session | None = None,
         timeout_seconds: float = 30,
+        read_only: bool = False,
     ) -> None:
-        self.base_url = _validated_base_url(base_url)
+        self.base_url = validate_canvas_origin(base_url)
         self.timeout_seconds = timeout_seconds
-        self.session = session or requests.Session()
+        self.read_only = read_only
+        self.session = session or HardenedCanvasSession(
+            timeout_seconds=timeout_seconds,
+            allowed_methods=("GET",) if read_only else ("GET", "PATCH"),
+            allowed_origin=self.base_url,
+        )
         if access_token:
             self.session.headers.update({"Authorization": f"Bearer {access_token}"})
         self.session.headers.update(
@@ -129,13 +138,20 @@ class NewQuizClient:
         return payload
 
     def _send(self, method: str, url: str, **kwargs: Any) -> requests.Response:
+        if self.read_only and method.upper() != "GET":
+            raise NewQuizApiError("Canvas import requests are GET-only")
         try:
             response = self.session.request(
                 method,
                 url,
                 timeout=self.timeout_seconds,
+                allow_redirects=False,
                 **kwargs,
             )
+            if 300 <= response.status_code < 400:
+                raise requests.TooManyRedirects(
+                    "Canvas redirects are disabled", response=response
+                )
             response.raise_for_status()
             return response
         except requests.RequestException as exc:
@@ -180,18 +196,6 @@ def _as_result_list(payload: Any) -> list[dict[str, Any]]:
     ):
         raise NewQuizApiError("Canvas returned invalid objects in a paginated response")
     return list(values)
-
-
-def _validated_base_url(base_url: str) -> str:
-    value = base_url.rstrip("/")
-    parsed = urlparse(value)
-    if parsed.scheme != "https" or not parsed.netloc:
-        raise ValueError("Canvas base_url must be an absolute HTTPS URL")
-    if parsed.username or parsed.password or parsed.query or parsed.fragment:
-        raise ValueError(
-            "Canvas base_url must not contain credentials, a query, or a fragment"
-        )
-    return value
 
 
 def _same_origin(base_url: str, target_url: str) -> bool:

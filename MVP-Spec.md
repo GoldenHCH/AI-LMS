@@ -2,8 +2,8 @@
 
 **Status:** Draft for review
 **Author:** Golden
-**Last updated:** July 14, 2026
-**One-liner:** Cursor for Canvas courses — a professor imports a course, tells an agent how to change it, reviews the proposed edits, and exports back to Canvas.
+**Last updated:** July 16, 2026
+**One-liner:** Cursor for Canvas courses — a professor imports a course, tells an agent how to change it, reviews the proposed edits, and exports the result as a new Canvas course.
 
 ---
 
@@ -18,6 +18,7 @@ Conscientious professors update their courses every semester based on student fe
 - **Analytics is V2.** Tracking student interactions ("PostHog for courses") to *generate* the change signal is explicitly deferred. It becomes the reason-for-each-change layer later; it is not in the MVP.
 - **Canvas structure = location, not dependency.** We mirror Canvas's model (modules → items: pages, quizzes, files), but Canvas stores containment, not the semantic links between a slide, a reading, and the exam question that tests it. Real cross-artifact propagation requires inferring those links — see Open Questions.
 - **Canvas-native content first.** Pages and quizzes are structured and API-editable. Files (PPTX/PDF) are opaque blobs and far harder to edit and write back. MVP handles pages and quizzes; files are out of scope.
+- **Export creates a new course, not an in-place write-back.** The edited course is exported as a Common Cartridge (`.imscc`) the professor uploads into Canvas as a fresh course. This was chosen deliberately: (a) an early spike proved in-place quiz write-back is unreliable — question stem/option edits silently failed in the Canvas UI; (b) creating a course via the Canvas API needs permissions instructors' personal tokens usually lack, while a cartridge upload needs none; (c) it makes damaging the live course structurally impossible. The tradeoff to validate: how faithfully Canvas's importer reconstructs quizzes (it tends to convert New Quizzes to Classic).
 
 ---
 
@@ -25,7 +26,7 @@ Conscientious professors update their courses every semester based on student fe
 
 1. **A professor can complete a real semester's worth of intended edits faster in-tool than by hand.** Target: at least 50% reduction in self-reported editing time for a representative update, in concierge/beta testing.
 2. **Edits clear the professor's review bar with minimal rework.** Target: ≥70% of agent-proposed changes accepted with no or trivial edits.
-3. **Round-trip integrity.** A course imported from Canvas, edited, and exported back reproduces cleanly — no lost content, broken quizzes, or scrambled formatting. Target: zero data-loss incidents across beta courses.
+3. **Round-trip integrity.** A course imported from Canvas, edited, and exported as a new course reproduces cleanly — no lost content, broken quizzes, or scrambled formatting. Target: zero data-loss incidents across beta courses.
 4. **Prove the core bet with real professors.** Get ≥3 professors to run a genuine next-semester update end-to-end and say they'd use it again.
 
 ## Non-Goals (v1)
@@ -59,11 +60,11 @@ Conscientious professors update their courses every semester based on student fe
 - As an instructor, I want each proposed change to include a short rationale so that reviewing is fast and I understand why the agent did what it did.
 
 **Export**
-- As an instructor, I want to export the edited course back to Canvas so that the changes appear in the real course my students use.
-- As an instructor, I want to preview or stage the export (and undo) so that I'm not afraid of breaking my live course.
+- As an instructor, I want to export the edited course as a new Canvas course so that I get a clean copy of my changes without touching the live course my students use.
+- As an instructor, I want to preview exactly what the new course will contain and confirm before it's generated so that I trust the result.
 
 **Edge / trust**
-- As an instructor, I want a clear warning when a change touches a quiz's correct answers or point values so that I never silently ship a grading error.
+- As an instructor, I want a clear warning when a change touches a quiz's correct answers or point values so that I trust the answer keys in the course I export.
 - As an instructor, I want to see which items were *not* touched so that I can confirm the scope of what changed.
 
 ---
@@ -73,14 +74,16 @@ Conscientious professors update their courses every semester based on student fe
 ### Must-Have (P0)
 
 **P0-1 — Canvas import**
-Connect to Canvas (OAuth) and import a selected course's modules, pages, and quizzes into an internal structured representation (modules → items).
+Connect to Canvas with a manually entered URL and personal access token and import a selected course's modules, pages, and quizzes into an internal structured representation (modules → items).
 - Given a connected Canvas account, when the instructor selects a course, then its modules, pages, and quizzes are imported and displayed in a module/item tree.
 - Files (PPTX/PDF) are listed as read-only context but not editable.
 - Import is non-destructive; the source Canvas course is untouched on import.
+- Every visit begins with blank credential fields. The Canvas URL and token are never stored in environment files, cookies, browser storage, URLs, logs, or the database.
+- A successful import creates an isolated 30-minute workspace. Its deadline is fixed, access requires the matching signed secure cookie, and expiration or disconnect deletes the working copy.
 
 **P0-2 — Structured internal course model**
 Represent the course as editable objects (page = rich text/HTML; quiz = questions, options, correct answers, points) — the "codebase" the agent operates on.
-- Round-trips losslessly: import → export with no edits reproduces the original content.
+- Round-trips losslessly: import → export with no edits produces a new course reproducing the original content. The model is what serializes into the export cartridge (P0-6), so fidelity depends on it.
 
 **P0-3 — Agent chat interface**
 A chat/agent panel where the instructor issues natural-language edit instructions scoped to the course.
@@ -97,23 +100,24 @@ The agent returns changes as a diff (before/after) per affected item, not as sil
 The instructor can accept or reject each proposed change, or refine it by replying in chat.
 - Accepted changes update the working copy; rejected ones are discarded; refinements produce a new diff.
 
-**P0-6 — Export back to Canvas**
-Push the edited pages and quizzes back to the Canvas course.
-- Given accepted changes, when the instructor exports, then Canvas reflects the edits.
-- Quiz structure (questions, correct answers, points) writes back correctly.
-- Export is previewable and the instructor confirms before anything writes to Canvas.
+**P0-6 — Export as a new Canvas course**
+Serialize the edited pages and quizzes into a Common Cartridge (`.imscc`) the instructor uploads to Canvas (Import Course Content → Common Cartridge), which creates a fresh course.
+- Given accepted changes, when the instructor exports, then a valid cartridge is produced and the resulting Canvas course reflects the edits.
+- Quiz structure (questions, correct answers, points) is represented in the cartridge; document how New Quizzes are handled (Canvas tends to import them as Classic).
+- Export is previewable — the instructor sees exactly what the new course will contain and confirms before the cartridge is generated.
+- The source Canvas course is never modified; no write API is called against it. (No fresh credentials are needed to export — the cartridge is produced locally and the instructor uploads it.)
 
 **P0-7 — Quiz-safety guardrails**
-Any change to a quiz's correct answers, point values, or question count is explicitly flagged in the diff.
-- The instructor cannot export a quiz-answer change without an explicit confirmation step.
+Any change to a quiz's correct answers, point values, or question count is explicitly flagged in the diff. Because the export lands in a new, student-less course, this is a review-trust flag, not a live-grading gate.
+- The pre-export preview summarizes all answer/point/count changes, and the instructor confirms them before the cartridge is generated.
 
 ### Nice-to-Have (P1)
 
 - **P1-1 — Cross-item propagation.** When editing a concept, surface *other* items that reference it and offer to update them together (a first, shallow step toward real dependency propagation).
 - **P1-2 — "Proposed semester update" entry point.** Instead of a blank chat box, let the instructor paste their feedback notes / intended changes and have the agent open with a proposed set of edits to react to. (Addresses the blank-agent-box problem.)
-- **P1-3 — Export to a new/unpublished Canvas course or module** as a safe staging target rather than overwriting the live course.
+- **P1-3 — ~~Export to a new/unpublished Canvas course as a safe staging target~~ — absorbed into P0-6.** New-course export *is* the MVP export model now, so this is no longer a fast-follow. A remaining P1 refinement: let the instructor choose to import the cartridge into an existing empty shell / specific sub-account rather than a brand-new course.
 - **P1-4 — Change summary / changelog** the instructor can export (what changed this semester and why).
-- **P1-5 — Undo/rollback** of a completed export.
+- **P1-5 — ~~Undo/rollback of a completed export~~ — largely obviated by P0-6.** Since export creates a new course and never mutates the source, "rollback" is just discarding the new course. A P1 nicety: re-export or regenerate the cartridge after further edits.
 
 ### Future Considerations (P2)
 
@@ -145,8 +149,8 @@ Any change to a quiz's correct answers, point values, or question count is expli
 
 - **[Stakeholder/Research — blocking] Is editing actually the bottleneck worth paying for?** The entire value rests on this. Validate via concierge (below) before heavy build.
 - **[Research — blocking] Does "pages and quizzes only" cover enough of what professors actually change?** If most content lives in PPTX/PDF, the MVP scope may be too thin. Measure on real courses.
-- **[Engineering] Canvas API write-back fidelity for quizzes** — do the New Quizzes vs. Classic Quizzes APIs let us write questions/answers/points cleanly? Confirm early; this can constrain P0-6/P0-7.
-- **[Engineering] OAuth / institutional permissions** — can an individual instructor authorize import/export without an LMS admin, or does procurement/IT block bottom-up adoption? (FERPA/privacy implications even without student data.)
+- **[Engineering] Common Cartridge export fidelity** — how faithfully does Canvas's `.imscc` importer reconstruct our pages and quizzes in a new course, and how does it handle New Quizzes (likely converting them to Classic)? Confirm early; this constrains P0-6/P0-7. (Supersedes the earlier in-place quiz write-back question, which the spike proved unreliable.)
+- **[Engineering] Future OAuth / institutional permissions** — the MVP uses a request-local PAT for *import*; *export* needs no API permissions because the instructor uploads the cartridge themselves. Before adding OAuth or a one-click course-creation API path, confirm whether an individual instructor can authorize it without an LMS admin and how procurement/IT affects bottom-up adoption.
 - **[Design] Blank agent box vs. proposed-update entry point** — do professors get value typing into an empty agent, or do they need the P1-2 "here's a proposed set of changes, react to it" opener on day one?
 - **[Engineering/Design] Diff representation for rich content** — how do we show a clean, trustworthy before→after for HTML pages and quiz questions so review is genuinely fast?
 
@@ -155,6 +159,6 @@ Any change to a quiz's correct answers, point values, or question count is expli
 ## Timeline / Phasing
 
 - **Phase 0 — Concierge validation (before building):** Take one real professor's course + their real intended next-semester changes. Hand-produce the edited pages and quizzes. Answer the two blocking questions: does the output clear their review bar, and does pages-and-quizzes-only cover enough? Cheapest possible test of the core bet.
-- **Phase 1 — MVP (P0-1…P0-7):** Import → agent edit with reviewable diffs → export, Canvas pages and quizzes, quiz-safety guardrails. Beta with ≥3 professors running genuine updates.
+- **Phase 1 — MVP (P0-1…P0-7):** Import → agent edit with reviewable diffs → export as a new Canvas course (Common Cartridge), Canvas pages and quizzes, quiz-safety guardrails. Beta with ≥3 professors running genuine updates.
 - **Phase 2 — P1 fast-follows:** Proposed-update entry point, shallow cross-item propagation, staging export, changelog, rollback.
 - **Later — V2:** File editing and the analytics/change-signal layer.

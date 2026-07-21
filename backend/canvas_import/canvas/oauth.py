@@ -11,7 +11,7 @@ from urllib.parse import urlencode
 
 import requests
 
-from .new_quizzes import _validated_base_url
+from .origin import validate_canvas_origin
 
 # Least-privilege import scopes. Write scopes belong to the later confirmed-export flow.
 IMPORT_SCOPES = (
@@ -61,7 +61,7 @@ class CanvasOAuthClient:
     ) -> None:
         if not client_id or not client_secret:
             raise ValueError("Canvas OAuth client credentials are required")
-        self.base_url = _validated_base_url(base_url)
+        self.base_url = validate_canvas_origin(base_url)
         self.client_id = client_id
         self.client_secret = client_secret
         self.redirect_uri = redirect_uri

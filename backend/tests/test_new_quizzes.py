@@ -34,12 +34,12 @@ def test_list_items_follows_same_origin_pagination():
         [
             FakeResponse(
                 [{"id": "1"}],
-                next_url="https://canvas.example.edu/api/quiz/v1/courses/10/quizzes/20/items?page=2",
+                next_url="https://canvas.example.instructure.com/api/quiz/v1/courses/10/quizzes/20/items?page=2",
             ),
             FakeResponse([{"id": "2"}]),
         ]
     )
-    client = NewQuizClient("https://canvas.example.edu", "token", session=session)
+    client = NewQuizClient("https://canvas.example.instructure.com", "token", session=session)
 
     assert client.list_items("10", "20") == [{"id": "1"}, {"id": "2"}]
     assert {method for method, _, _ in session.calls} == {"GET"}
@@ -50,7 +50,7 @@ def test_cross_origin_pagination_is_rejected():
     session = FakeSession(
         [FakeResponse([{"id": "1"}], next_url="https://attacker.example/items?page=2")]
     )
-    client = NewQuizClient("https://canvas.example.edu", "token", session=session)
+    client = NewQuizClient("https://canvas.example.instructure.com", "token", session=session)
 
     with pytest.raises(NewQuizApiError, match="cross-origin"):
         client.list_items("10", "20")
@@ -58,7 +58,7 @@ def test_cross_origin_pagination_is_rejected():
 
 def test_update_item_wraps_canvas_json_shape():
     session = FakeSession([FakeResponse({"id": "30"})])
-    client = NewQuizClient("https://canvas.example.edu", "token", session=session)
+    client = NewQuizClient("https://canvas.example.instructure.com", "token", session=session)
 
     result = client.update_item("10", "20", "30", {"points_possible": 4})
 
@@ -69,7 +69,7 @@ def test_update_item_wraps_canvas_json_shape():
 
 def test_unrecognized_success_payload_is_not_silently_treated_as_empty():
     session = FakeSession([FakeResponse({"unexpected": []})])
-    client = NewQuizClient("https://canvas.example.edu", "token", session=session)
+    client = NewQuizClient("https://canvas.example.instructure.com", "token", session=session)
 
     with pytest.raises(NewQuizApiError, match="no items or quizzes"):
         client.list_items("10", "20")

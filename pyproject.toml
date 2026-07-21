@@ -9,10 +9,17 @@ description = "Lossless Canvas course import and round-trip model"
 requires-python = ">=3.11"
 dependencies = [
   "canvasapi==3.6.0",
+  "fastapi==0.139.0",
   "requests==2.34.2",
+  "supabase==2.31.0",
+  "uvicorn==0.51.0",
 ]
 
+[tool.setuptools]
+package-dir = {"" = "backend"}
+
 [tool.setuptools.packages.find]
+where = ["backend"]
 include = ["canvas_import*"]
 
 [tool.pytest.ini_options]
@@ -20,4 +27,4 @@ addopts = "--strict-markers"
 markers = [
   "live: requires explicit Canvas test-tenant credentials and course IDs",
 ]
-testpaths = ["tests"]
+testpaths = ["backend/tests"]
