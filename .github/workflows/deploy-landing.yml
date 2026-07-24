@@ -1,0 +1,62 @@
+name: Deploy landing page
+
+# Builds the standalone ScholarSync AI marketing site (scholarsync-ai/) and
+# publishes it to GitHub Pages at https://goldenhch.github.io/AI-LMS/.
+# Nothing else in this repository is deployed by this workflow.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scholarsync-ai/**'
+      - '.github/workflows/deploy-landing.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never let two Pages deploys race; let an in-flight one finish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: scholarsync-ai
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: scholarsync-ai/package-lock.json
+
+      - run: npm ci
+
+      # `npm run build` typechecks first and fails outright if
+      # VITE_DEMO_REQUEST_URL is missing or not a valid HTTPS URL, so a build
+      # with dead "Request a Demo" links can never reach Pages.
+      - run: npm run build
+        env:
+          VITE_DEMO_REQUEST_URL: ${{ vars.VITE_DEMO_REQUEST_URL }}
+          VITE_BASE_PATH: /AI-LMS/
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: scholarsync-ai/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
