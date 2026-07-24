@@ -24,6 +24,22 @@ function assertValidDemoUrl(env: Record<string, string>) {
   }
 }
 
+// GitHub Pages serves a project site from a subpath (/AI-LMS/), so the deploy
+// workflow sets VITE_BASE_PATH. Left unset — local dev, preview, or a future
+// custom-domain deploy at the root — the site builds against "/".
+function resolveBasePath(env: Record<string, string>): string {
+  const value = env.VITE_BASE_PATH;
+  if (!value) {
+    return '/';
+  }
+
+  if (!value.startsWith('/') || !value.endsWith('/')) {
+    throw new Error(`VITE_BASE_PATH must start and end with "/", got: "${value}"`);
+  }
+
+  return value;
+}
+
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_');
 
@@ -32,6 +48,7 @@ export default defineConfig(({mode}) => {
   }
 
   return {
+    base: resolveBasePath(env),
     plugins: [react(), tailwindcss()],
   };
 });

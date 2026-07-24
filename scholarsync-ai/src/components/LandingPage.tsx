@@ -7,7 +7,10 @@ import {ArrowRight, Circle, ClipboardCheck, Eye, Gavel, GraduationCap, Mail} fro
 import {motion} from 'motion/react';
 import {DEMO_REQUEST_URL} from '../config';
 
-const mockupImageUrl = '/images/course-diff-mockup.jpg';
+// Vite rewrites root-absolute asset paths in index.html for the configured
+// base, but not string literals in JS — so build this one off BASE_URL or it
+// 404s on a subpath deploy like GitHub Pages' /AI-LMS/.
+const mockupImageUrl = `${import.meta.env.BASE_URL}images/course-diff-mockup.jpg`;
 
 export default function LandingPage() {
   // Common animation configurations

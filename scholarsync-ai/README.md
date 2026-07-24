@@ -34,25 +34,35 @@ build. `npm run dev` stays lenient so the app still renders locally without it s
 - `npm run preview` — serve the production build from `dist/` locally
 - `npm run clean` — remove `dist/`
 
-## Deploying to Cloudflare Pages
+## Deploying to GitHub Pages
 
-This site deploys independently from the rest of the repo. In the Cloudflare Pages dashboard,
-create a project connected to this GitHub repository with:
+This site deploys independently from the rest of the repo, via
+[`.github/workflows/deploy-landing.yml`](../.github/workflows/deploy-landing.yml). The workflow
+builds `scholarsync-ai/` and publishes `dist/` to GitHub Pages on every push to `main` that touches
+this directory (or on manual `workflow_dispatch`). Nothing else in the repository is deployed.
 
-- **Repository:** `GoldenHCH/AI-LMS`
-- **Production branch:** `main`
-- **Root directory:** `scholarsync-ai`
-- **Build command:** `npm run build`
-- **Build output directory:** `dist`
-- **Environment variable (Production):** `VITE_DEMO_REQUEST_URL` = the real Google Form URL
+Live URL: **https://goldenhch.github.io/AI-LMS/**
 
-Cloudflare Pages automatically builds preview deployments for non-production branches/PRs using the
-same settings. The target hostname is the free `scholarsync-ai.pages.dev` subdomain, subject to
-availability; a custom domain can be attached later from the same dashboard.
+One-time setup in the GitHub UI:
 
-If you change the deployed hostname (e.g. a custom domain), update the canonical/`og:url`/
-`twitter:image` URLs hardcoded in [`index.html`](index.html) — they currently point at
-`https://scholarsync-ai.pages.dev/`.
+1. **Settings → Pages → Build and deployment → Source: GitHub Actions.**
+2. **Settings → Secrets and variables → Actions → Variables → New repository variable:**
+   `VITE_DEMO_REQUEST_URL` = the real demo-request form URL. The build fails loudly if it is
+   missing or not HTTPS, so a deploy with dead CTAs is not possible.
+
+Because a GitHub Pages *project* site is served from a subpath (`/AI-LMS/`), the workflow builds
+with `VITE_BASE_PATH=/AI-LMS/`. Locally, `npm run dev` and `npm run preview` default to `/`; to
+reproduce the deployed subpath exactly, run `VITE_BASE_PATH=/AI-LMS/ npm run preview` and open
+`http://localhost:4173/AI-LMS/`.
+
+Note that GitHub Pages on a **private** repository requires a paid GitHub plan. If Pages is
+unavailable, the same workflow drops unchanged into a separate public repo for this site — only
+`VITE_BASE_PATH` and the absolute URLs below need to change.
+
+If you change the deployed hostname or path (a custom domain, a different repo name), update
+`VITE_BASE_PATH` in the workflow **and** the canonical / `og:url` / `og:image` / `twitter:image`
+URLs hardcoded in [`index.html`](index.html) — they currently point at
+`https://goldenhch.github.io/AI-LMS/`.
 
 ## Self-hosted assets
 
