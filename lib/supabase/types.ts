@@ -14,6 +14,89 @@ export type Database = {
   }
   public: {
     Tables: {
+      change_batches: {
+        Row: {
+          course_id: string
+          created_at: string
+          id: string
+          request_text: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          id?: string
+          request_text: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          id?: string
+          request_text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "change_batches_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      change_proposals: {
+        Row: {
+          batch_id: string
+          created_at: string
+          id: string
+          is_sensitive: boolean
+          item_id: string
+          kind: string
+          proposed_state: Json
+          rationale: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          batch_id: string
+          created_at?: string
+          id?: string
+          is_sensitive?: boolean
+          item_id: string
+          kind: string
+          proposed_state: Json
+          rationale: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          batch_id?: string
+          created_at?: string
+          id?: string
+          is_sensitive?: boolean
+          item_id?: string
+          kind?: string
+          proposed_state?: Json
+          rationale?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "change_proposals_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "change_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "change_proposals_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "module_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       courses: {
         Row: {
           canvas_course_id: string
@@ -424,7 +507,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      accept_change_proposals: {
+        Args: { p_proposal_ids: string[] }
+        Returns: {
+          accepted: boolean
+          proposal_id: string
+          reason: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

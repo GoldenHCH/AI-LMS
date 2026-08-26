@@ -3,9 +3,14 @@
 @tailwind utilities;
 
 :root {
+  --color-ink: 23 36 58;
+  --color-mist: 244 246 248;
+  --color-ocean: 40 111 115;
+  --color-sun: 233 162 59;
+
   color-scheme: light;
-  background: #f4f6f8;
-  color: #17243a;
+  background: rgb(var(--color-mist));
+  color: rgb(var(--color-ink));
   font-synthesis: none;
 }
 
@@ -14,23 +19,23 @@
 }
 
 html {
-  background: #f4f6f8;
+  background: rgb(var(--color-mist));
 }
 
 body {
   margin: 0;
   min-width: 320px;
   background:
-    radial-gradient(circle at 8% -10%, rgba(40, 111, 115, 0.12), transparent 26rem),
-    radial-gradient(circle at 92% 4%, rgba(233, 162, 59, 0.1), transparent 22rem),
-    #f4f6f8;
-  color: #17243a;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    radial-gradient(circle at 8% -10%, rgb(var(--color-ocean) / 0.12), transparent 26rem),
+    radial-gradient(circle at 92% 4%, rgb(var(--color-sun) / 0.1), transparent 22rem),
+    rgb(var(--color-mist));
+  color: rgb(var(--color-ink));
+  font-family: var(--font-inter), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   text-rendering: optimizeLegibility;
 }
 
 ::selection {
-  background: rgba(40, 111, 115, 0.2);
+  background: rgb(var(--color-ocean) / 0.2);
 }
 
 @layer components {

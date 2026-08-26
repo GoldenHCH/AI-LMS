@@ -1,0 +1,20 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "ai-lms-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3000
+    },
+    {
+      "name": "landing-preview",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "VITE_BASE_PATH=/AI-LMS/ npm --prefix scholarsync-ai run preview -- --port 4173 --strictPort"
+      ],
+      "port": 4173
+    }
+  ]
+}

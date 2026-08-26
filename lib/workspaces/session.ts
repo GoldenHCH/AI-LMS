@@ -52,5 +52,5 @@ export function clearWorkspaceSessionCookie(response: NextResponse): void {
 }
 
 function workspaceSessionSecret(): string {
-  return process.env.CANVAS_IMPORT_SERVICE_TOKEN ?? ''
+  return process.env.WORKSPACE_SESSION_SECRET ?? ''
 }
