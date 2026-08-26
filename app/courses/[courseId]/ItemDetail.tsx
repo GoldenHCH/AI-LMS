@@ -1,11 +1,11 @@
-import type { CourseItem } from '@/lib/courses/getCourseTree'
+import type { CourseItem, CoursePage, CourseQuiz } from '@/lib/courses/getCourseTree'
 
 export function ItemDetail({ item }: { item: CourseItem }) {
   if (item.page) {
-    return <PageDetail item={item} />
+    return <PageDetail page={item.page} />
   }
   if (item.quiz) {
-    return <QuizDetail item={item} />
+    return <QuizDetail quiz={item.quiz} />
   }
   if (item.file) {
     return <FileDetail item={item} />
@@ -13,8 +13,7 @@ export function ItemDetail({ item }: { item: CourseItem }) {
   return <OpaqueDetail item={item} />
 }
 
-function PageDetail({ item }: { item: CourseItem }) {
-  const page = item.page!
+export function PageDetail({ page }: { page: CoursePage }) {
   return (
     <article>
       <DetailHeader eyebrow="Page" title={page.title}>
@@ -32,8 +31,7 @@ function PageDetail({ item }: { item: CourseItem }) {
   )
 }
 
-function QuizDetail({ item }: { item: CourseItem }) {
-  const quiz = item.quiz!
+export function QuizDetail({ quiz }: { quiz: CourseQuiz }) {
   return (
     <article>
       <DetailHeader eyebrow="Quiz" title={quiz.title}>

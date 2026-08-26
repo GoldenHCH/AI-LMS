@@ -124,6 +124,12 @@ export function CourseView({ course }: { course: CourseTreeData }) {
                   <Count label="Modules" value={course.moduleCount} />
                   <Count label="Items" value={course.itemCount} border />
                 </dl>
+                <a
+                  href={`/courses/${course.id}/review`}
+                  className="inline-flex min-h-11 items-center justify-center rounded-xl bg-ink px-4 py-2 text-sm font-semibold text-white transition hover:bg-ocean focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-ocean"
+                >
+                  Chat with agent
+                </a>
                 <button
                   type="button"
                   onClick={disconnect}

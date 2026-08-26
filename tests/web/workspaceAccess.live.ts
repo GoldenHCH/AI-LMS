@@ -16,7 +16,7 @@ test(
     const appBaseUrl = process.env.APP_BASE_URL ?? 'http://localhost:3000'
     const supabaseUrl = requiredEnvironment('NEXT_PUBLIC_SUPABASE_URL')
     const secretKey = requiredEnvironment('SUPABASE_SECRET_KEY')
-    const signingSecret = requiredEnvironment('CANVAS_IMPORT_SERVICE_TOKEN')
+    const signingSecret = requiredEnvironment('WORKSPACE_SESSION_SECRET')
     const workspaceA = randomUUID()
     const workspaceB = randomUUID()
     const expiresAt = new Date(Date.now() + 5 * 60_000).toISOString()
